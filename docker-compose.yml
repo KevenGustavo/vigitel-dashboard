@@ -1,14 +1,15 @@
-version: '3.8'
-
 services:
-  jupyter:
-    image: python:3.11-slim
-    container_name: vigitel_discovery
+  db:
+    image: postgres:15-alpine
+    container_name: vigitel_db
+    env_file:
+      - .env
     ports:
-      - "8888:8888"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - .:/app
-    working_dir: /app
-    command: >
-      bash -c "pip install -r requirements.txt && 
-               jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=''"
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+volumes:
+  pgdata:

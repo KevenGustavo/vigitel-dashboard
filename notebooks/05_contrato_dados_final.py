@@ -97,7 +97,14 @@ SCHEMA_BRONZE_TO_SILVER = {
     'af4dominios': 'ind_af_4dominios_150min',
     'tv_d_3': 'ind_tv_maior_3h',
     'tempo_tela_stv': 'ind_tela_s_tv_maior_3h',
-    'tempo_tela_total': 'ind_tela_total_maior_3h'
+    'tempo_tela_total': 'ind_tela_total_maior_3h',
+    
+    # ----------------------------------------------------
+    # Desfechos de Saúde (Para Correlação com AF/Sedentarismo)
+    # ----------------------------------------------------
+    'has': 'ind_hipertensao',
+    'db': 'ind_diabetes',
+    'depressao': 'ind_depressao'
 }
 
 def get_colunas_brutas():

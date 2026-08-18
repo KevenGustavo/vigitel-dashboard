@@ -75,13 +75,29 @@ for idx, row in vars_af_sedentarismo.iterrows():
 # 4. CRUZAMENTO com o contrato atual (03_contrato_dados.py)
 # ============================================================
 CONTRATO_ATUAL = {
+    # Metadados
     'chave', 'ano', 'cidade', 'pesorake2025',
+    # Perfil Sociodemográfico
     'q6', 'q7', 'q8_anos', 'q69', 'q9_i', 'q11_i',
-    'q42', 'q44', 'q45', 'q46',
-    'q50', 'q53',
-    'q55', 'r149', 'r150_hh', 'r150_mm',
-    'r147', 'r148_hh', 'r148_mm',
-    'q57', 'q58', 'q59', 'q59a', 'q59b ', 'q59c ',
+    # Domínio 1: Lazer
+    'q42', 'q43', 'q43a', 'q44', 'q45', 'q46',
+    # Domínio 2: Deslocamento
+    'q50', 'q51', 'q52', 'q53', 'q54',
+    # Domínio 3: Doméstica
+    'q55', 'q55a', 'q56', 'r149', 'r150_hh', 'r150_mm',
+    # Domínio 4: Ocupacional
+    'q47', 'q48', 'q49', 'r147', 'r148_hh', 'r148_mm',
+    # Sedentarismo
+    'q57', 'q58', 'q59', 'q59a', 'q59b', 'q59c', 'r201',
+    # Indicadores Oficiais
+    'af', 'ati_livre', 'ativo_livre', 'ina_livre', 'inativo',
+    'atilaz', 'atiocu', 'atitrans', 'atidom',
+    'q51medio', 'q54medio', 'deslocdia', 'deslocsemana',
+    'atiocusemana', 'faxinasemana',
+    'af3dominios', 'af3dominios_insu', 'af4dominios',
+    'tv_d_3', 'tempo_tela_stv', 'tempo_tela_total',
+    # Desfechos de Saúde
+    'has', 'db', 'depressao',
 }
 
 vars_af_set = set(vars_af_sedentarismo['Variable name'].str.strip().tolist())
