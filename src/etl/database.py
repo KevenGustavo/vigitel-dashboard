@@ -1,10 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.etl.config import config
+from src.core.config import config
 
 # Cria a engine central com o pooling padrão do SQLAlchemy
-engine = create_engine(config.get_database_url(), echo=False)
+engine = create_engine(config.get_database_url_sync(), echo=False)
 
 # Session factory configurado
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -85,7 +85,37 @@ def run():
             conn.execute(text(cleanup_sql))
             logger.info("Códigos mágicos substituídos por NULL nas colunas categóricas.")
 
-        # 4. Contar registros
+        # 4. Limpeza semântica específica do domínio VIGITEL
+        #    Trata valores residuais que escaparam da tradução automática do STATA
+        semantic_cleanup = """
+            -- Trailing spaces em colunas text (ex: 'goiania ' → 'goiania')
+            UPDATE silver.vigitel_cleansed SET id_cidade = TRIM(id_cidade)
+                WHERE id_cidade != TRIM(id_cidade);
+
+            -- raca_cor: código '80' = 'outros' no dicionário VIGITEL
+            UPDATE silver.vigitel_cleansed SET raca_cor = 'outros'
+                WHERE raca_cor = '80';
+
+            -- raca_cor: 'não sabe' não é classificação demográfica utilizável → NULL
+            UPDATE silver.vigitel_cleansed SET raca_cor = NULL
+                WHERE raca_cor = 'não sabe';
+
+            -- deslocamento_trabalho_ativo: '3' = 'não trabalha fora de casa' no dicionário
+            UPDATE silver.vigitel_cleansed SET deslocamento_trabalho_ativo = 'não trabalha fora'
+                WHERE deslocamento_trabalho_ativo = '3';
+
+            -- tipo_exercicio_principal: '17' = código numérico residual → 'outros'
+            UPDATE silver.vigitel_cleansed SET tipo_exercicio_principal = 'outros'
+                WHERE tipo_exercicio_principal = '17';
+
+            -- duracao_minutos_lazer: '7' = '40 a 44' minutos no dicionário VIGITEL (q46)
+            UPDATE silver.vigitel_cleansed SET duracao_minutos_lazer = '40 a 44'
+                WHERE duracao_minutos_lazer = '7';
+        """
+        conn.execute(text(semantic_cleanup))
+        logger.info("Limpeza semântica concluída (trailing spaces, códigos residuais traduzidos).")
+
+        # 5. Contar registros
         count = conn.execute(text("SELECT count(*) FROM silver.vigitel_cleansed")).scalar()
 
     elapsed = time.time() - start

@@ -111,6 +111,10 @@ def run():
         logger.info("dim_perfil criada com faixas etárias e de escolaridade.")
 
         # ── 4. Tabela Fato ────────────────────────────────────
+        # Cada coluna recebe o CAST para o tipo mais performático:
+        #   - BOOLEAN para indicadores binários (1 byte vs 3-4 bytes de TEXT)
+        #   - NUMERIC para valores contínuos e pesos amostrais
+        #   - TEXT mantido apenas para categóricos genuínos
         conn.execute(text("""
             CREATE TABLE gold.fato_atividade_fisica AS
             SELECT
@@ -119,44 +123,102 @@ def run():
                 dc.sk_cidade,
                 dp.sk_perfil,
 
-                -- Peso amostral (epidemiológico)
+                -- Peso amostral (epidemiológico) → NUMERIC
                 s.peso_amostral::numeric AS peso_amostral,
 
-                -- Variáveis brutas relevantes para o dashboard
-                s.pratica_exercicio_lazer,
+                -- Variáveis brutas categóricas → TEXT
                 s.tipo_exercicio_principal,
                 s.duracao_minutos_lazer,
                 s.deslocamento_trabalho_ativo,
-                s.assiste_tv,
                 s.horas_sentado_dia,
 
-                -- Indicadores oficiais pré-calculados
-                s.ind_af_total,
-                s.minutos_lazer_semana,
-                s.ind_ativo_lazer,
-                s.ind_inativo_lazer,
-                s.ind_inativo_total,
-                s.ind_ativo_lazer_150min,
-                s.ind_ativo_ocupacional,
-                s.ind_ativo_transporte,
-                s.ind_ativo_domestico,
-                s.minutos_desloc_trabalho,
-                s.minutos_desloc_escola,
-                s.minutos_desloc_dia,
-                s.minutos_desloc_semana,
-                s.minutos_ocupacional_semana,
-                s.minutos_domestico_semana,
-                s.ind_af_3dominios_150min,
-                s.ind_af_insuficiente,
-                s.ind_af_4dominios_150min,
-                s.ind_tv_maior_3h,
-                s.ind_tela_s_tv_maior_3h,
-                s.ind_tela_total_maior_3h,
+                -- Variáveis brutas Sim/Não convertidas para BOOLEAN
+                CASE WHEN s.pratica_exercicio_lazer = 'sim' THEN TRUE
+                     WHEN s.pratica_exercicio_lazer = 'não' THEN FALSE
+                     ELSE NULL END::boolean AS pratica_exercicio_lazer,
 
-                -- Desfechos de saúde
-                s.ind_hipertensao,
-                s.ind_diabetes,
-                s.ind_depressao
+                CASE WHEN s.assiste_tv = 'sim' THEN TRUE
+                     WHEN s.assiste_tv = 'não' THEN FALSE
+                     ELSE NULL END::boolean AS assiste_tv,
+
+                -- Indicador de nível de AF (0, 1, 2) → SMALLINT
+                s.ind_af_total::smallint AS ind_af_total,
+
+                -- Contínuos de minutos → NUMERIC
+                s.minutos_lazer_semana::numeric AS minutos_lazer_semana,
+                s.minutos_desloc_trabalho::numeric AS minutos_desloc_trabalho,
+                s.minutos_desloc_escola::numeric AS minutos_desloc_escola,
+                s.minutos_desloc_dia::numeric AS minutos_desloc_dia,
+                s.minutos_desloc_semana::numeric AS minutos_desloc_semana,
+                s.minutos_ocupacional_semana::numeric AS minutos_ocupacional_semana,
+                s.minutos_domestico_semana::numeric AS minutos_domestico_semana,
+
+                -- Indicadores Sim/Não → BOOLEAN
+                CASE WHEN s.ind_inativo_lazer = 'Sim' THEN TRUE
+                     WHEN s.ind_inativo_lazer = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_inativo_lazer,
+
+                CASE WHEN s.ind_inativo_total = 'Sim' THEN TRUE
+                     WHEN s.ind_inativo_total = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_inativo_total,
+
+                CASE WHEN s.ind_ativo_lazer_150min = 'Sim' THEN TRUE
+                     WHEN s.ind_ativo_lazer_150min = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_ativo_lazer_150min,
+
+                CASE WHEN s.ind_af_3dominios_150min = 'Sim' THEN TRUE
+                     WHEN s.ind_af_3dominios_150min = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_af_3dominios_150min,
+
+                CASE WHEN s.ind_af_insuficiente = 'Sim' THEN TRUE
+                     WHEN s.ind_af_insuficiente = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_af_insuficiente,
+
+                CASE WHEN s.ind_af_4dominios_150min = 'Sim' THEN TRUE
+                     WHEN s.ind_af_4dominios_150min = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_af_4dominios_150min,
+
+                CASE WHEN s.ind_tv_maior_3h = 'Sim' THEN TRUE
+                     WHEN s.ind_tv_maior_3h = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_tv_maior_3h,
+
+                CASE WHEN s.ind_tela_s_tv_maior_3h = 'Sim' THEN TRUE
+                     WHEN s.ind_tela_s_tv_maior_3h = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_tela_s_tv_maior_3h,
+
+                CASE WHEN s.ind_tela_total_maior_3h = 'Sim' THEN TRUE
+                     WHEN s.ind_tela_total_maior_3h = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_tela_total_maior_3h,
+
+                CASE WHEN s.ind_hipertensao = 'Sim' THEN TRUE
+                     WHEN s.ind_hipertensao = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_hipertensao,
+
+                CASE WHEN s.ind_diabetes = 'Sim' THEN TRUE
+                     WHEN s.ind_diabetes = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_diabetes,
+
+                CASE WHEN s.ind_depressao = 'Sim' THEN TRUE
+                     WHEN s.ind_depressao = 'Nao' THEN FALSE
+                     ELSE NULL END::boolean AS ind_depressao,
+
+                -- Desfechos de Saúde Calculados (IMC) → BOOLEAN
+                -- IMC = peso_kg / (altura_m)^2
+                ((s.peso_kg_imputado::numeric) / 
+                 POWER((NULLIF(s.altura_cm_imputado::numeric, 0) / 100.0), 2) >= 25)::boolean AS ind_excesso_peso,
+
+                ((s.peso_kg_imputado::numeric) / 
+                 POWER((NULLIF(s.altura_cm_imputado::numeric, 0) / 100.0), 2) >= 30)::boolean AS ind_obesidade,
+
+                -- Indicadores 0/1 → BOOLEAN
+                (s.ind_ativo_ocupacional = '1')::boolean AS ind_ativo_ocupacional,
+                (s.ind_ativo_transporte = '1')::boolean AS ind_ativo_transporte,
+                (s.ind_ativo_domestico = '1')::boolean AS ind_ativo_domestico,
+
+                -- Indicador Ativo/Inativo → BOOLEAN
+                CASE WHEN s.ind_ativo_lazer = 'Ativo' THEN TRUE
+                     WHEN s.ind_ativo_lazer = 'Inativo/Ins' THEN FALSE
+                     ELSE NULL END::boolean AS ind_ativo_lazer
 
             FROM silver.vigitel_cleansed s
             LEFT JOIN gold.dim_tempo dt
@@ -187,7 +249,16 @@ def run():
         conn.execute(text("CREATE INDEX idx_fato_tempo ON gold.fato_atividade_fisica (sk_tempo);"))
         conn.execute(text("CREATE INDEX idx_fato_cidade ON gold.fato_atividade_fisica (sk_cidade);"))
         conn.execute(text("CREATE INDEX idx_fato_perfil ON gold.fato_atividade_fisica (sk_perfil);"))
-        logger.info("Índices B-Tree criados nas Foreign Keys da Fato.")
+        
+        # Índices compostos cobrindo filtros combinados do Dashboard
+        conn.execute(text("CREATE INDEX idx_fato_cidade_perfil ON gold.fato_atividade_fisica (sk_cidade, sk_perfil);"))
+        conn.execute(text("CREATE INDEX idx_fato_tempo_cidade_perfil ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil);"))
+        
+        logger.info("Índices B-Tree simples e compostos criados nas Foreign Keys da Fato.")
+
+        # Reorganização física da tabela no disco usando o índice de tempo (I/O Sequencial)
+        conn.execute(text("CLUSTER gold.fato_atividade_fisica USING idx_fato_tempo;"))
+        logger.info("Tabela Fato organizada fisicamente no disco por tempo (CLUSTER).")
 
         # Contagem final
         count = conn.execute(text("SELECT count(*) FROM gold.fato_atividade_fisica")).scalar()
