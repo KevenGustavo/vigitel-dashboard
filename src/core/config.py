@@ -26,6 +26,15 @@ class Config:
     @classmethod
     def get_database_url_sync(cls) -> str:
         """Retorna a connection string para o SQLAlchemy (Síncrono/psycopg2) usado pelo ETL."""
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            # Compatibilidade com formatos comuns de PaaS (postgres:// -> postgresql+psycopg2://)
+            if database_url.startswith("postgres://"):
+                return database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+            elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
+                return database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+            return database_url
+
         return (
             f"postgresql+psycopg2://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}"
             f"@{cls.POSTGRES_HOST}:{cls.POSTGRES_PORT}/{cls.POSTGRES_DB}"
@@ -34,6 +43,21 @@ class Config:
     @classmethod
     def get_database_url_async(cls) -> str:
         """Retorna a connection string para o SQLAlchemy (Assíncrono/asyncpg) usado pela API."""
+        database_url = os.getenv("DATABASE_URL")
+        if database_url:
+            # Normaliza protocolo para asyncpg
+            if database_url.startswith("postgres://"):
+                url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+            elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
+                url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            else:
+                url = database_url
+            
+            # asyncpg utiliza ?ssl=require em vez de ?sslmode=require
+            if "sslmode=" in url:
+                url = url.replace("sslmode=require", "ssl=require").replace("sslmode=prefer", "ssl=prefer")
+            return url
+
         return (
             f"postgresql+asyncpg://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}"
             f"@{cls.POSTGRES_HOST}:{cls.POSTGRES_PORT}/{cls.POSTGRES_DB}"
