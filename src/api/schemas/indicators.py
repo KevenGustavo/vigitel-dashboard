@@ -40,14 +40,22 @@ class EvolucaoDesfechosSaude(DesfechosSaudeResponse):
     """Evolução temporal dos KPIs de Desfechos de Saúde."""
     ano: int = Field(..., description="Ano da coleta (ex: 2013)")
 
-# ─── Análises Detalhadas (Séries e Agrupamentos) ───────────────────────────────
 
-class DataPoint(BaseModel):
-    """Ponto de dado genérico para gráficos de evolução ou agrupamento."""
-    rotulo: str = Field(..., description="Eixo X (ex: '2019', 'São Paulo', '18-24 anos')")
-    valor: float = Field(..., description="Percentual calculado (Eixo Y)")
+# ─── Estruturas Comparativas Demográficas e Geográficas (LOD) ─────────────────
 
-class AnaliseDetalhadaResponse(BaseModel):
-    """Estrutura padrão para qualquer análise agregada do painel interativo."""
-    indicador: str = Field(..., description="Nome do indicador avaliado (ex: 'ativo_lazer')")
-    dados: List[DataPoint] = Field(..., description="Lista de pontos para plotagem gráfica")
+class ComparativoSexoResponse(BaseModel):
+    """Resposta com o perfil de atividade física segregado por sexo biológico."""
+    masculino: Optional[AtividadeFisicaResponse] = Field(None, description="Indicadores para população masculina")
+    feminino: Optional[AtividadeFisicaResponse] = Field(None, description="Indicadores para população feminina")
+
+class SedentarismoFaixaEtariaItem(BaseModel):
+    """Indicadores de sedentarismo para uma determinada faixa etária."""
+    faixa_etaria: str = Field(..., description="Faixa etária (ex: '18-24', '65+')")
+    tempo_tela_maior_3h: Optional[float] = Field(None, description="Tempo de tela total > 3h (%)")
+    tempo_tv_maior_3h: Optional[float] = Field(None, description="Tempo de TV > 3h (%)")
+    tempo_tela_exceto_tv_maior_3h: Optional[float] = Field(None, description="Tempo de telas digitais > 3h (%)")
+
+class RankingCidadeItem(BaseModel):
+    """Prevalência de agravo de saúde para uma capital."""
+    nome_cidade: str = Field(..., description="Nome da capital (ex: 'São Paulo')")
+    valor: Optional[float] = Field(None, description="Prevalência percentual calculada (%)")

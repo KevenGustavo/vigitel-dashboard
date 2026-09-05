@@ -12,7 +12,6 @@ dim_tempo = Table(
 dim_cidade = Table(
     'dim_cidade', metadata,
     Column('sk_cidade', Integer, primary_key=True),
-    Column('id_cidade', String),
     Column('nome_cidade', String)
 )
 

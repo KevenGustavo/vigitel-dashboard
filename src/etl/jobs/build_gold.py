@@ -1,9 +1,12 @@
 """
 Gold Layer — Modelagem Dimensional (Star Schema) via SQL.
 
-Constrói as dimensões e a tabela Fato diretamente no PostgreSQL,
-evitando transferência de dados para o Python.
-Inclui criação de índices para otimizar consultas analíticas da API.
+Constrói as tabelas de dimensão e a tabela Fato diretamente no PostgreSQL,
+garantindo:
+  1. Integridade referencial plena (FKs explícitas e NULL-safety via IS NOT DISTINCT FROM)
+  2. Tipagem eficiente (BOOLEAN, SMALLINT, NUMERIC)
+  3. Indexação B-Tree simples e composta cobrindo os padrões de consulta da API
+  4. Organização física em disco (CLUSTER por tempo) e atualização do otimizador (ANALYZE)
 """
 import time
 import logging
@@ -13,27 +16,14 @@ from src.etl.database import engine
 
 logger = logging.getLogger(__name__)
 
-# Mapeamento dos nomes de cidade crus (minúsculos sem acento) para os nomes legíveis das 27 capitais
-CAPITAIS_MAPEAMENTO = {
-    'rio branco': 'Rio Branco', 'maceio': 'Maceió', 'macapa': 'Macapá',
-    'manaus': 'Manaus', 'salvador': 'Salvador', 'fortaleza': 'Fortaleza',
-    'distrito federal': 'Brasília', 'vitoria': 'Vitória', 'goiania': 'Goiânia',
-    'sao luis': 'São Luís', 'cuiaba': 'Cuiabá', 'campo grande': 'Campo Grande',
-    'belo horizonte': 'Belo Horizonte', 'belem': 'Belém', 'joao pessoa': 'João Pessoa',
-    'curitiba': 'Curitiba', 'recife': 'Recife', 'teresina': 'Teresina',
-    'rio de janeiro': 'Rio de Janeiro', 'natal': 'Natal', 'porto alegre': 'Porto Alegre',
-    'porto velho': 'Porto Velho', 'boa vista': 'Boa Vista', 'florianopolis': 'Florianópolis',
-    'sao paulo': 'São Paulo', 'aracaju': 'Aracaju', 'palmas': 'Palmas',
-}
 
-
-def run():
-    """Constrói o Star Schema na camada Gold via SQL."""
+def run() -> int:
+    """Constrói o Star Schema na camada Gold via SQL com integridade referencial e índices."""
     logger.info("Iniciando processamento da camada Gold (Star Schema)...")
     start = time.time()
 
     with engine.begin() as conn:
-        # ── Limpeza prévia ────────────────────────────────────
+        # ── Limpeza prévia de tabelas e constraints ───────────
         for tbl in ['fato_atividade_fisica', 'dim_tempo', 'dim_cidade', 'dim_perfil']:
             conn.execute(text(f"DROP TABLE IF EXISTS gold.{tbl} CASCADE;"))
 
@@ -53,28 +43,21 @@ def run():
                   WHERE ano_coleta IS NOT NULL) sub;
         """))
         conn.execute(text("ALTER TABLE gold.dim_tempo ADD PRIMARY KEY (sk_tempo);"))
-        logger.info("dim_tempo criada.")
+        conn.execute(text("CREATE INDEX idx_dim_tempo_ano ON gold.dim_tempo (ano_coleta);"))
+        logger.info("dim_tempo criada com PK e índice de busca temporal.")
 
         # ── 2. Dimensão Cidade ────────────────────────────────
-        # Insere primeiro com código, depois faz UPDATE com nomes
         conn.execute(text("""
             CREATE TABLE gold.dim_cidade AS
-            SELECT
-                ROW_NUMBER() OVER (ORDER BY id_cidade)::int AS sk_cidade,
-                id_cidade::text AS id_cidade,
-                NULL::text AS nome_cidade
-            FROM (SELECT DISTINCT id_cidade FROM silver.vigitel_cleansed
-                  WHERE id_cidade IS NOT NULL) sub;
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY nome_cidade)::int AS sk_cidade,
+                nome_cidade::text AS nome_cidade
+            FROM (SELECT DISTINCT nome_cidade FROM silver.vigitel_cleansed 
+                  WHERE nome_cidade IS NOT NULL) sub;
         """))
         conn.execute(text("ALTER TABLE gold.dim_cidade ADD PRIMARY KEY (sk_cidade);"))
-
-        # Popula os nomes das capitais
-        for nome_cru, nome_formatado in CAPITAIS_MAPEAMENTO.items():
-            conn.execute(text(
-                "UPDATE gold.dim_cidade SET nome_cidade = :nome_formatado "
-                "WHERE id_cidade = :nome_cru"
-            ), {"nome_formatado": nome_formatado, "nome_cru": nome_cru})
-        logger.info("dim_cidade criada com nomes das capitais.")
+        conn.execute(text("CREATE INDEX idx_dim_cidade_nome ON gold.dim_cidade (nome_cidade);"))
+        logger.info("dim_cidade criada com PK e índice de busca por capital.")
 
         # ── 3. Dimensão Perfil ────────────────────────────────
         conn.execute(text("""
@@ -108,13 +91,16 @@ def run():
             ) sub;
         """))
         conn.execute(text("ALTER TABLE gold.dim_perfil ADD PRIMARY KEY (sk_perfil);"))
-        logger.info("dim_perfil criada com faixas etárias e de escolaridade.")
+        conn.execute(text("""
+            CREATE UNIQUE INDEX idx_dim_perfil_lookup 
+            ON gold.dim_perfil (faixa_etaria, sexo, raca_cor, faixa_escolaridade) 
+            NULLS NOT DISTINCT;
+        """))
+        logger.info("dim_perfil criada com PK e índice único composto.")
 
         # ── 4. Tabela Fato ────────────────────────────────────
-        # Cada coluna recebe o CAST para o tipo mais performático:
-        #   - BOOLEAN para indicadores binários (1 byte vs 3-4 bytes de TEXT)
-        #   - NUMERIC para valores contínuos e pesos amostrais
-        #   - TEXT mantido apenas para categóricos genuínos
+        # Tipagem otimizada: BOOLEAN (1 byte), SMALLINT (2 bytes), NUMERIC para métricas
+        # NULL-Safety com IS NOT DISTINCT FROM em dimensões com valores nulos (ex: raca_cor)
         conn.execute(text("""
             CREATE TABLE gold.fato_atividade_fisica AS
             SELECT
@@ -224,7 +210,7 @@ def run():
             LEFT JOIN gold.dim_tempo dt
                 ON s.ano_coleta::text = dt.ano_coleta::text
             LEFT JOIN gold.dim_cidade dc
-                ON s.id_cidade::text = dc.id_cidade::text
+                ON s.nome_cidade::text = dc.nome_cidade::text
             LEFT JOIN gold.dim_perfil dp
                 ON dp.faixa_etaria = CASE
                         WHEN s.idade_anos::numeric < 25 THEN '18-24'
@@ -234,8 +220,8 @@ def run():
                         WHEN s.idade_anos::numeric < 65 THEN '55-64'
                         ELSE '65+'
                     END
-                AND dp.sexo = s.sexo
-                AND dp.raca_cor = s.raca_cor
+                AND dp.sexo IS NOT DISTINCT FROM s.sexo
+                AND dp.raca_cor IS NOT DISTINCT FROM s.raca_cor
                 AND dp.faixa_escolaridade = CASE
                         WHEN s.anos_estudo::numeric BETWEEN 0 AND 8 THEN '0-8 anos'
                         WHEN s.anos_estudo::numeric BETWEEN 9 AND 11 THEN '9-11 anos'
@@ -243,28 +229,42 @@ def run():
                         ELSE 'Não informado'
                     END;
         """))
-        logger.info("fato_atividade_fisica criada.")
+        logger.info("fato_atividade_fisica criada com junção segura (NULL-safe).")
 
-        # ── 5. Índices para performance analítica ─────────────
+        # ── 5. Restrições de Integridade (PK e FKs) ───────────
+        conn.execute(text("ALTER TABLE gold.fato_atividade_fisica ADD PRIMARY KEY (sk_registro);"))
+        conn.execute(text("""
+            ALTER TABLE gold.fato_atividade_fisica
+            ADD CONSTRAINT fk_fato_tempo FOREIGN KEY (sk_tempo) REFERENCES gold.dim_tempo (sk_tempo),
+            ADD CONSTRAINT fk_fato_cidade FOREIGN KEY (sk_cidade) REFERENCES gold.dim_cidade (sk_cidade),
+            ADD CONSTRAINT fk_fato_perfil FOREIGN KEY (sk_perfil) REFERENCES gold.dim_perfil (sk_perfil);
+        """))
+        logger.info("Chave Primária e Chaves Estrangeiras adicionadas à Fato.")
+
+        # ── 6. Índices para performance analítica do Dashboard ──
         conn.execute(text("CREATE INDEX idx_fato_tempo ON gold.fato_atividade_fisica (sk_tempo);"))
         conn.execute(text("CREATE INDEX idx_fato_cidade ON gold.fato_atividade_fisica (sk_cidade);"))
         conn.execute(text("CREATE INDEX idx_fato_perfil ON gold.fato_atividade_fisica (sk_perfil);"))
-        
-        # Índices compostos cobrindo filtros combinados do Dashboard
         conn.execute(text("CREATE INDEX idx_fato_cidade_perfil ON gold.fato_atividade_fisica (sk_cidade, sk_perfil);"))
         conn.execute(text("CREATE INDEX idx_fato_tempo_cidade_perfil ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil);"))
-        
-        logger.info("Índices B-Tree simples e compostos criados nas Foreign Keys da Fato.")
+        logger.info("Índices B-Tree simples e compostos criados nas FKs da Fato.")
 
-        # Reorganização física da tabela no disco usando o índice de tempo (I/O Sequencial)
+        # ── 7. Otimização física (CLUSTER) e estatísticas (ANALYZE) ──
         conn.execute(text("CLUSTER gold.fato_atividade_fisica USING idx_fato_tempo;"))
         logger.info("Tabela Fato organizada fisicamente no disco por tempo (CLUSTER).")
+
+        conn.execute(text("ANALYZE gold.dim_tempo;"))
+        conn.execute(text("ANALYZE gold.dim_cidade;"))
+        conn.execute(text("ANALYZE gold.dim_perfil;"))
+        conn.execute(text("ANALYZE gold.fato_atividade_fisica;"))
+        logger.info("Estatísticas do otimizador PostgreSQL atualizadas (ANALYZE).")
 
         # Contagem final
         count = conn.execute(text("SELECT count(*) FROM gold.fato_atividade_fisica")).scalar()
 
     elapsed = time.time() - start
-    logger.info("Gold concluída: %d linhas na Fato em %.1fs", count, elapsed)
+    rate = count / elapsed if elapsed > 0 else 0
+    logger.info("Gold concluída: %d linhas na Fato em %.2fs (%.0f linhas/s)", count, elapsed, rate)
     return count
 
 

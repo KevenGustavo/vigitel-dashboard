@@ -10,7 +10,7 @@ COLUMN_MAP = {
     # ── Metadados e Ponderação Epidemiológica ─────────────────
     'chave': 'id_registro',
     'ano': 'ano_coleta',
-    'cidade': 'id_cidade',
+    'cidade': 'nome_cidade',
     'pesorake2025': 'peso_amostral',
 
     # ── Perfil Sociodemográfico e Antropométrico ──────────────
@@ -100,16 +100,14 @@ CONTINUOUS_COLUMNS = {
     'horas_sentado_dia',
 }
 
-# Códigos do inquérito que representam ausência de resposta
-MAGIC_NULL_CODES = [777, 888, 999, 555, 666, '777', '888', '999', '555', '666',
-                    'não quis informar', 'não lembra', 'Não quis informar', 'Não lembra']
+# Códigos do inquérito VIGITEL que representam ausência de resposta ou recusa
+MAGIC_NULL_CODES = frozenset({
+    777, 888, 999, 555, 666,
+    '777', '888', '999', '555', '666',
+    'não quis informar', 'não lembra', 'Não quis informar', 'Não lembra',
+})
 
 
-def get_csv_columns():
+def get_csv_columns() -> list[str]:
     """Retorna as chaves originais do CSV para filtrar no read_csv."""
     return list(COLUMN_MAP.keys())
-
-
-def get_column_rename_map():
-    """Retorna o dicionário de mapeamento para df.rename(columns=...)."""
-    return COLUMN_MAP.copy()

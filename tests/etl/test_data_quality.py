@@ -125,6 +125,29 @@ class TestGold:
             )).scalar()
         assert orphans == 0, f"Encontradas {orphans} referências órfãs para dim_cidade."
 
+    def test_fato_referential_integrity_perfil(self):
+        """Não devem existir registros órfãos na FK sk_perfil."""
+        with engine.connect() as conn:
+            orphans = conn.execute(text(
+                "SELECT count(*) FROM gold.fato_atividade_fisica f "
+                "LEFT JOIN gold.dim_perfil d ON f.sk_perfil = d.sk_perfil "
+                "WHERE f.sk_perfil IS NULL OR d.sk_perfil IS NULL"
+            )).scalar()
+        assert orphans == 0, f"Encontradas {orphans} referências órfãs para dim_perfil."
+
+    def test_fato_constraints_exist(self):
+        """Primary Key e Foreign Keys devem estar registradas na tabela Fato."""
+        with engine.connect() as conn:
+            constraints = conn.execute(text(
+                "SELECT conname FROM pg_constraint "
+                "WHERE conrelid = 'gold.fato_atividade_fisica'::regclass"
+            )).fetchall()
+            constraint_names = {row[0] for row in constraints}
+        assert 'fato_atividade_fisica_pkey' in constraint_names, "PK da Fato não encontrada."
+        assert 'fk_fato_tempo' in constraint_names, "FK fk_fato_tempo não encontrada."
+        assert 'fk_fato_cidade' in constraint_names, "FK fk_fato_cidade não encontrada."
+        assert 'fk_fato_perfil' in constraint_names, "FK fk_fato_perfil não encontrada."
+
     def test_indexes_exist(self):
         """Índices B-Tree devem existir nas FKs da tabela Fato."""
         with engine.connect() as conn:
@@ -136,3 +159,6 @@ class TestGold:
         assert 'idx_fato_tempo' in index_names, "Índice idx_fato_tempo não encontrado."
         assert 'idx_fato_cidade' in index_names, "Índice idx_fato_cidade não encontrado."
         assert 'idx_fato_perfil' in index_names, "Índice idx_fato_perfil não encontrado."
+        assert 'idx_fato_cidade_perfil' in index_names, "Índice composto idx_fato_cidade_perfil não encontrado."
+        assert 'idx_fato_tempo_cidade_perfil' in index_names, "Índice composto idx_fato_tempo_cidade_perfil não encontrado."
+

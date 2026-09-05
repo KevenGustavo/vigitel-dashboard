@@ -1,12 +1,11 @@
 """
-Silver Layer — Limpeza e padronização via SQL.
+Silver Layer — Limpeza e padronização via SQL de passagem única (Single-Pass ELT).
 
-Todas as transformações são executadas diretamente no PostgreSQL,
-eliminando a transferência de dados pelo driver Python.
-Operações realizadas:
-  1. Renomear colunas (De-Para do contrato)
-  2. Gerar Surrogate Key (UUID)
-  3. Limpar códigos mágicos (777, 888, 999) apenas em colunas categóricas
+Todas as transformações, substituição de códigos mágicos e mapeamentos semânticos
+são executadas diretamente no PostgreSQL em uma única operação CREATE TABLE AS SELECT.
+Isso evita a geração de dezenas de milhões de tuplas mortas (table bloat) decorrentes
+de comandos UPDATE repetidos sobre 833.000+ linhas, reduzindo o tempo de processamento
+de minutos para poucos segundos.
 """
 import time
 import logging
@@ -17,109 +16,116 @@ from src.etl.schema import COLUMN_MAP, CONTINUOUS_COLUMNS, MAGIC_NULL_CODES
 
 logger = logging.getLogger(__name__)
 
+# Mapeamento dos nomes de cidade crus para os nomes oficiais das 27 capitais brasileiras
+CAPITAIS_MAPEAMENTO = {
+    'rio branco': 'Rio Branco', 'maceio': 'Maceió', 'macapa': 'Macapá',
+    'manaus': 'Manaus', 'salvador': 'Salvador', 'fortaleza': 'Fortaleza',
+    'distrito federal': 'Brasília', 'vitoria': 'Vitória', 'goiania': 'Goiânia',
+    'sao luis': 'São Luís', 'cuiaba': 'Cuiabá', 'campo grande': 'Campo Grande',
+    'belo horizonte': 'Belo Horizonte', 'belem': 'Belém', 'joao pessoa': 'João Pessoa',
+    'curitiba': 'Curitiba', 'recife': 'Recife', 'teresina': 'Teresina',
+    'rio de janeiro': 'Rio de Janeiro', 'natal': 'Natal', 'porto alegre': 'Porto Alegre',
+    'porto velho': 'Porto Velho', 'boa vista': 'Boa Vista', 'florianopolis': 'Florianópolis',
+    'sao paulo': 'São Paulo', 'aracaju': 'Aracaju', 'palmas': 'Palmas',
+}
 
-def _build_rename_sql():
-    """Gera a cláusula SELECT com alias para cada coluna do contrato."""
-    selects = []
+
+def _build_projection_sql() -> str:
+    """
+    Gera a cláusula SELECT projetando todas as colunas do contrato com
+    limpeza de códigos mágicos e padronização semântica em passagem única.
+    """
+    cases_cidades = "\n            ".join(
+        [f"WHEN '{k}' THEN '{v}'" for k, v in CAPITAIS_MAPEAMENTO.items()]
+    )
+
+    # Códigos mágicos para a cláusula IN (...) do PostgreSQL
+    magic_codes_sql = ", ".join(repr(str(c)) for c in sorted(list(MAGIC_NULL_CODES), key=str))
+
+    projections = [
+        "gen_random_uuid()::text AS sk_registro"
+    ]
+
     for original, renamed in COLUMN_MAP.items():
-        # Aspas duplas para nomes com caracteres especiais
-        selects.append(f'"{original}" AS "{renamed}"')
-    return ",\n        ".join(selects)
+        if renamed in CONTINUOUS_COLUMNS:
+            # Colunas contínuas não sofrem eliminação de códigos mágicos
+            projections.append(f'"{original}" AS "{renamed}"')
+        elif renamed == 'nome_cidade':
+            projections.append(f"""CASE LOWER(TRIM("{original}"))
+            {cases_cidades}
+            ELSE INITCAP(TRIM("{original}"))
+        END AS "{renamed}" """)
+        elif renamed == 'sexo':
+            projections.append(f"""CASE
+            WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
+            WHEN "{original}" IS NULL THEN NULL
+            ELSE INITCAP(TRIM("{original}"))
+        END AS "{renamed}" """)
+        elif renamed == 'raca_cor':
+            projections.append(f"""CASE
+            WHEN TRIM("{original}") IN ({magic_codes_sql}, 'não sabe') THEN NULL
+            WHEN TRIM("{original}") = '80' THEN 'Outros'
+            WHEN LOWER(TRIM("{original}")) = 'vermelha' THEN 'Indígena'
+            WHEN LOWER(TRIM("{original}")) IN ('parda', 'parda/morena') THEN 'Parda'
+            WHEN "{original}" IS NULL THEN NULL
+            ELSE INITCAP(TRIM("{original}"))
+        END AS "{renamed}" """)
+        elif renamed == 'deslocamento_trabalho_ativo':
+            projections.append(f"""CASE
+            WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
+            WHEN TRIM("{original}") = '3' THEN 'não trabalha fora'
+            ELSE "{original}"
+        END AS "{renamed}" """)
+        elif renamed == 'tipo_exercicio_principal':
+            projections.append(f"""CASE
+            WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
+            WHEN TRIM("{original}") = '17' THEN 'outros'
+            ELSE "{original}"
+        END AS "{renamed}" """)
+        elif renamed == 'duracao_minutos_lazer':
+            projections.append(f"""CASE
+            WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
+            WHEN TRIM("{original}") = '7' THEN '40 a 44'
+            ELSE "{original}"
+        END AS "{renamed}" """)
+        else:
+            # Demais colunas categóricas: substitui códigos mágicos por NULL
+            projections.append(f"""CASE
+            WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
+            ELSE "{original}"
+        END AS "{renamed}" """)
+
+    return ",\n        ".join(projections)
 
 
-def _build_null_cleanup_sql():
-    """
-    Gera UPDATE statements para substituir códigos mágicos por NULL,
-    aplicando apenas às colunas categóricas (excluindo contínuas).
-    """
-    statements = []
-    categorical_cols = [v for v in COLUMN_MAP.values() if v not in CONTINUOUS_COLUMNS]
-
-    # Códigos numéricos
-    numeric_codes = [c for c in MAGIC_NULL_CODES if isinstance(c, int)]
-    # Códigos textuais
-    text_codes = [c for c in MAGIC_NULL_CODES if isinstance(c, str)]
-
-    for col in categorical_cols:
-        conditions = []
-        if numeric_codes:
-            nums = ", ".join(str(c) for c in numeric_codes)
-            conditions.append(f'"{col}"::text IN ({", ".join(repr(str(c)) for c in numeric_codes)})')
-        if text_codes:
-            conditions.append(f'"{col}"::text IN ({", ".join(repr(c) for c in text_codes)})')
-
-        if conditions:
-            where = " OR ".join(conditions)
-            statements.append(
-                f'UPDATE silver.vigitel_cleansed SET "{col}" = NULL WHERE {where};'
-            )
-    return "\n".join(statements)
-
-
-def run():
-    """Executa a transformação Silver inteiramente no PostgreSQL."""
-    logger.info("Iniciando processamento da camada Silver (SQL)...")
+def run() -> int:
+    """Executa a transformação da camada Silver em passagem única (Single-Pass ELT)."""
+    logger.info("Iniciando processamento da camada Silver (Single-Pass ELT)...")
     start = time.time()
 
-    rename_clause = _build_rename_sql()
+    select_clause = _build_projection_sql()
 
     with engine.begin() as conn:
-        # 1. Dropar tabela anterior (overwrite)
+        # 1. Dropar tabela anterior
         conn.execute(text("DROP TABLE IF EXISTS silver.vigitel_cleansed CASCADE;"))
-        logger.info("Tabela anterior removida.")
+        logger.info("Tabela silver.vigitel_cleansed anterior removida.")
 
-        # 2. Criar a tabela Silver a partir da Bronze com renomeação + UUID
+        # 2. Criar a nova tabela Silver já limpa e padronizada em único passo
         create_sql = f"""
         CREATE TABLE silver.vigitel_cleansed AS
         SELECT
-            gen_random_uuid()::text AS sk_registro,
-            {rename_clause}
+            {select_clause}
         FROM bronze.vigitel_raw;
         """
         conn.execute(text(create_sql))
-        logger.info("Tabela silver.vigitel_cleansed criada com colunas renomeadas e UUID.")
+        logger.info("Tabela silver.vigitel_cleansed criada via Single-Pass ELT.")
 
-        # 3. Limpeza seletiva de códigos mágicos (apenas categóricas)
-        cleanup_sql = _build_null_cleanup_sql()
-        if cleanup_sql:
-            conn.execute(text(cleanup_sql))
-            logger.info("Códigos mágicos substituídos por NULL nas colunas categóricas.")
-
-        # 4. Limpeza semântica específica do domínio VIGITEL
-        #    Trata valores residuais que escaparam da tradução automática do STATA
-        semantic_cleanup = """
-            -- Trailing spaces em colunas text (ex: 'goiania ' → 'goiania')
-            UPDATE silver.vigitel_cleansed SET id_cidade = TRIM(id_cidade)
-                WHERE id_cidade != TRIM(id_cidade);
-
-            -- raca_cor: código '80' = 'outros' no dicionário VIGITEL
-            UPDATE silver.vigitel_cleansed SET raca_cor = 'outros'
-                WHERE raca_cor = '80';
-
-            -- raca_cor: 'não sabe' não é classificação demográfica utilizável → NULL
-            UPDATE silver.vigitel_cleansed SET raca_cor = NULL
-                WHERE raca_cor = 'não sabe';
-
-            -- deslocamento_trabalho_ativo: '3' = 'não trabalha fora de casa' no dicionário
-            UPDATE silver.vigitel_cleansed SET deslocamento_trabalho_ativo = 'não trabalha fora'
-                WHERE deslocamento_trabalho_ativo = '3';
-
-            -- tipo_exercicio_principal: '17' = código numérico residual → 'outros'
-            UPDATE silver.vigitel_cleansed SET tipo_exercicio_principal = 'outros'
-                WHERE tipo_exercicio_principal = '17';
-
-            -- duracao_minutos_lazer: '7' = '40 a 44' minutos no dicionário VIGITEL (q46)
-            UPDATE silver.vigitel_cleansed SET duracao_minutos_lazer = '40 a 44'
-                WHERE duracao_minutos_lazer = '7';
-        """
-        conn.execute(text(semantic_cleanup))
-        logger.info("Limpeza semântica concluída (trailing spaces, códigos residuais traduzidos).")
-
-        # 5. Contar registros
+        # 3. Contar registros
         count = conn.execute(text("SELECT count(*) FROM silver.vigitel_cleansed")).scalar()
 
     elapsed = time.time() - start
-    logger.info("Silver concluída: %d linhas em %.1fs", count, elapsed)
+    rate = count / elapsed if elapsed > 0 else 0
+    logger.info("Silver concluída: %d linhas em %.2fs (%.0f linhas/s)", count, elapsed, rate)
     return count
 
 

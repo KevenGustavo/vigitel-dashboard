@@ -1,8 +1,19 @@
-from sqlalchemy import select
+from typing import Optional, List, Any
+from sqlalchemy import select, Select
 from src.api.db.models import fato_atividade_fisica, dim_tempo, dim_cidade, dim_perfil
 from src.api.schemas.filters import QueryFilters
 
-def get_base_query():
+# Mapeamento declarativo de filtros: (nome_atributo, coluna_banco, tipo_operacao)
+FILTER_MAPPINGS = (
+    ("ano", dim_tempo.c.ano_coleta, "in"),
+    ("cidade", dim_cidade.c.nome_cidade, "in"),
+    ("sexo", dim_perfil.c.sexo, "eq"),
+    ("faixa_etaria", dim_perfil.c.faixa_etaria, "in"),
+    ("escolaridade", dim_perfil.c.faixa_escolaridade, "in"),
+    ("raca_cor", dim_perfil.c.raca_cor, "in"),
+)
+
+def get_base_query() -> Select:
     """
     Constrói a base da query SQL com os JOINs do Star Schema.
     """
@@ -14,21 +25,30 @@ def get_base_query():
         dim_perfil, fato_atividade_fisica.c.sk_perfil == dim_perfil.c.sk_perfil
     )
 
-def apply_filters(query, filters: QueryFilters):
+def is_valid_filter(val: Any) -> bool:
+    """Verifica se o filtro possui um valor real, ignorando None, coleções vazias e objetos Query default."""
+    if val is None or hasattr(val, "default"):
+        return False
+    if isinstance(val, (list, tuple, set)) and len(val) == 0:
+        return False
+    return True
+
+def apply_filters(query: Select, filters: QueryFilters, exclude: Optional[List[str]] = None) -> Select:
     """
-    Aplica as condições WHERE baseadas nos filtros preenchidos pelo usuário.
+    Aplica as condições WHERE baseadas nos filtros preenchidos pelo usuário,
+    permitindo omitir campos específicos (ex: para comparativos por sexo ou idade - LOD).
     """
-    if filters.ano:
-        query = query.where(dim_tempo.c.ano_coleta.in_(filters.ano))
-    if filters.cidade:
-        query = query.where(dim_cidade.c.id_cidade.in_(filters.cidade))
-    if filters.sexo:
-        query = query.where(dim_perfil.c.sexo == filters.sexo)
-    if filters.faixa_etaria:
-        query = query.where(dim_perfil.c.faixa_etaria.in_(filters.faixa_etaria))
-    if filters.escolaridade:
-        query = query.where(dim_perfil.c.faixa_escolaridade.in_(filters.escolaridade))
-    if filters.raca_cor:
-        query = query.where(dim_perfil.c.raca_cor.in_(filters.raca_cor))
+    exclude_set = set(exclude) if exclude else set()
     
+    for field_name, column, op in FILTER_MAPPINGS:
+        if field_name in exclude_set:
+            continue
+        val = getattr(filters, field_name, None)
+        if not is_valid_filter(val):
+            continue
+        if op == "in":
+            query = query.where(column.in_(val))
+        elif op == "eq":
+            query = query.where(column == val)
+            
     return query

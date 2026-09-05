@@ -15,6 +15,14 @@ class Config:
     POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
     POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 
+    # Configurações do Pool de Conexões assíncronas do PostgreSQL (API)
+    DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "10"))
+    DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))
+    DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+
+    # Configurações de CORS
+    CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
+
     @classmethod
     def get_database_url_sync(cls) -> str:
         """Retorna a connection string para o SQLAlchemy (Síncrono/psycopg2) usado pelo ETL."""

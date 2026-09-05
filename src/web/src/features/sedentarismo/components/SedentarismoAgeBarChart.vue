@@ -1,0 +1,215 @@
+<template>
+  <div class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col justify-between h-full relative">
+    
+    <!-- Topo: Cabeçalho do Card -->
+    <div class="pb-2 border-b border-border/60">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-2.5 h-2.5 rounded-full bg-amber shrink-0"></div>
+          <h3 class="text-sm font-bold text-text-primary uppercase tracking-normal whitespace-nowrap truncate font-display">
+            Por Faixa Etária
+          </h3>
+        </div>
+
+        <!-- Badge Explicativo LOD -->
+        <div class="relative group/lod inline-flex items-center cursor-help shrink-0">
+          <span class="text-[10.5px] text-text-secondary bg-stone-100 hover:bg-stone-200/80 border border-stone-200/80 px-2 py-0.5 rounded-md font-medium transition-colors flex items-center gap-1">
+            <span>Geracional</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 text-stone-400">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+            </svg>
+          </span>
+
+          <!-- Popover Explicativo LOD -->
+          <div class="absolute right-0 top-full mt-2 w-72 p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/lod:opacity-100 group-hover/lod:visible transition-all duration-200 z-50 pointer-events-none">
+            <div class="font-bold text-amber-400 mb-1 text-[11px] uppercase tracking-wider">
+              Curva Geracional de Telas
+            </div>
+            <p class="leading-relaxed text-stone-200 text-[11px]">
+              Prevalência (>3h/dia) comparando TV vs Telas Digitais (celular/tablet/PC) pelas 6 faixas etárias. Mantém ativos os filtros de ano, cidade, sexo e escolaridade.
+            </p>
+            <div class="w-2.5 h-2.5 bg-stone-900 border-t border-l border-stone-700 transform rotate-45 absolute -top-1.5 right-6"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Centro: Gráfico de Barras Agrupadas Horizontais -->
+    <div class="relative w-full h-[330px] my-1">
+      <!-- Loading Skeleton -->
+      <div v-if="isLoading" class="absolute inset-0 z-10 bg-card">
+        <ChartSkeleton type="bar" />
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="!hasData" class="absolute inset-0 flex flex-col justify-center items-center gap-2 text-center p-6">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-stone-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        <p class="text-sm font-semibold text-text-primary">Dados indisponíveis</p>
+        <p class="text-xs text-text-secondary">Tente ajustar os filtros globais.</p>
+      </div>
+
+      <!-- ECharts Grouped Bar Component -->
+      <v-chart
+        v-else
+        class="w-full h-full"
+        :option="chartOption"
+        autoresize
+      />
+    </div>
+
+    <!-- Rodapé: Legenda e Resumo Epidemiológico -->
+    <div class="pt-2 border-t border-border/40 text-[11px] text-text-muted flex flex-col gap-1">
+      <div class="flex items-center justify-between text-xs">
+        <div class="flex items-center gap-3">
+          <span class="flex items-center gap-1 text-sky-600 font-semibold">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span> Telas Digitais
+          </span>
+          <span class="flex items-center gap-1 text-purple-600 font-semibold">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Televisão
+          </span>
+        </div>
+        <span class="text-[10px] text-stone-400">Escala de 0 a 100%</span>
+      </div>
+    </div>
+
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import ChartSkeleton from '../../core/components/ui/ChartSkeleton.vue'
+
+const props = defineProps({
+  data: {
+    type: Array,
+    default: () => []
+  },
+  isLoading: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const hasData = computed(() => {
+  return Array.isArray(props.data) && props.data.length > 0
+})
+
+const chartOption = computed(() => {
+  if (!hasData.value) return {}
+
+  // Inverte a ordem para que 18-24 fique no topo do eixo Y vertical
+  const sorted = [...props.data].reverse()
+  const ageLabels = sorted.map(d => d.faixa_etaria + ' anos')
+  const digitalData = sorted.map(d => d.tempo_tela_exceto_tv_maior_3h ?? 0)
+  const tvData = sorted.map(d => d.tempo_tv_maior_3h ?? 0)
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+      borderColor: '#E2E8F0',
+      borderWidth: 1,
+      padding: [10, 14],
+      textStyle: {
+        color: '#1C1917',
+        fontSize: 12
+      },
+      formatter: (params) => {
+        if (!params || !params.length) return ''
+        const idx = params[0].dataIndex
+        const item = sorted[idx]
+        const age = item.faixa_etaria + ' anos'
+        
+        let html = `<div class="font-bold text-xs text-stone-800 pb-1 mb-1.5 border-b border-stone-200 flex items-center justify-between">
+          <span>Faixa: ${age}</span>
+          <span class="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+            Total tela: ${item.tempo_tela_maior_3h ? item.tempo_tela_maior_3h.toFixed(1) + '%' : '—'}
+          </span>
+        </div>`
+
+        html += `<div class="space-y-1.5">`
+        params.forEach(p => {
+          const val = (p.value !== null && p.value !== undefined) ? `${Number(p.value).toFixed(1)}%` : '—'
+          html += `
+            <div class="flex items-center justify-between gap-4 text-xs">
+              <div class="flex items-center gap-1.5">
+                <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${p.color};"></span>
+                <span class="text-stone-600">${p.seriesName}</span>
+              </div>
+              <span class="font-bold text-stone-900 font-mono">${val}</span>
+            </div>
+          `
+        })
+        html += `</div>`
+        return html
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '8%',
+      top: '5%',
+      bottom: '5%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      min: 0,
+      max: 60,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        formatter: '{value}%',
+        color: '#A8A29E',
+        fontSize: 10
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#F5F5F4',
+          type: 'dashed'
+        }
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: ageLabels,
+      axisLine: {
+        lineStyle: { color: '#E7E5E4' }
+      },
+      axisTick: { show: false },
+      axisLabel: {
+        color: '#78716C',
+        fontSize: 11,
+        fontWeight: 500
+      }
+    },
+    series: [
+      {
+        name: 'Telas Digitais',
+        type: 'bar',
+        barWidth: 8,
+        barGap: '30%',
+        data: digitalData,
+        itemStyle: {
+          color: '#0284C7',
+          borderRadius: [0, 4, 4, 0]
+        }
+      },
+      {
+        name: 'Televisão',
+        type: 'bar',
+        barWidth: 8,
+        data: tvData,
+        itemStyle: {
+          color: '#7C3AED',
+          borderRadius: [0, 4, 4, 0]
+        }
+      }
+    ]
+  }
+})
+</script>

@@ -45,13 +45,15 @@ def run():
             schema="bronze",
             if_exists=mode,
             index=False,
-            method=None,  # executemany — estável para volumes grandes
+            method="multi",
+            chunksize=500,  # 500 linhas x 74 colunas = 37.000 parâmetros (< limite de 65.535 do PG)
         )
         total_rows += len(chunk)
         logger.info("  Chunk %d gravado (%d linhas acumuladas)", i + 1, total_rows)
 
     elapsed = time.time() - start
-    logger.info("Bronze concluída: %d linhas em %.1fs", total_rows, elapsed)
+    rate = total_rows / elapsed if elapsed > 0 else 0
+    logger.info("Bronze concluída: %d linhas em %.1fs (%.0f linhas/s)", total_rows, elapsed, rate)
     return total_rows
 
 
