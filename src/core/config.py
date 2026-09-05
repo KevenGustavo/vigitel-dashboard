@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 from dotenv import load_dotenv
 
 # Carrega as variáveis do arquivo .env (caso exista) na raiz do projeto
@@ -28,12 +29,13 @@ class Config:
         """Retorna a connection string para o SQLAlchemy (Síncrono/psycopg2) usado pelo ETL."""
         database_url = os.getenv("DATABASE_URL")
         if database_url:
-            # Compatibilidade com formatos comuns de PaaS (postgres:// -> postgresql+psycopg2://)
-            if database_url.startswith("postgres://"):
-                return database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-            elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
-                return database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-            return database_url
+            parsed = urlparse(database_url)
+            qs = parse_qs(parsed.query)
+            # Remove parâmetros incompatíveis com libpq/psycopg2 como channel_binding
+            qs.pop("channel_binding", None)
+            new_query = urlencode({k: v[0] for k, v in qs.items()})
+            cleaned = parsed._replace(scheme="postgresql+psycopg2", query=new_query)
+            return urlunparse(cleaned)
 
         return (
             f"postgresql+psycopg2://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}"
@@ -45,18 +47,21 @@ class Config:
         """Retorna a connection string para o SQLAlchemy (Assíncrono/asyncpg) usado pela API."""
         database_url = os.getenv("DATABASE_URL")
         if database_url:
-            # Normaliza protocolo para asyncpg
-            if database_url.startswith("postgres://"):
-                url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-            elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+"):
-                url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-            else:
-                url = database_url
-            
-            # asyncpg utiliza ?ssl=require em vez de ?sslmode=require
-            if "sslmode=" in url:
-                url = url.replace("sslmode=require", "ssl=require").replace("sslmode=prefer", "ssl=prefer")
-            return url
+            parsed = urlparse(database_url)
+            qs = parse_qs(parsed.query)
+
+            # asyncpg aceita apenas parâmetros específicos via URL (ex: ssl).
+            # Remove channel_binding, sslmode, etc., que causam TypeError: connect() got unexpected keyword argument
+            valid_params = {}
+            if "sslmode" in qs:
+                mode = qs["sslmode"][0]
+                valid_params["ssl"] = "require" if mode in ("require", "verify-ca", "verify-full") else "prefer"
+            elif "ssl" in qs:
+                valid_params["ssl"] = qs["ssl"][0]
+
+            new_query = urlencode(valid_params)
+            cleaned = parsed._replace(scheme="postgresql+asyncpg", query=new_query)
+            return urlunparse(cleaned)
 
         return (
             f"postgresql+asyncpg://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}"

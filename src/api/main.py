@@ -58,7 +58,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
     allow_credentials=not is_wildcard,
-    allow_methods=["GET", "OPTIONS"],
+    allow_methods=["GET", "HEAD", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -91,7 +91,7 @@ app.include_router(indicadores.router, prefix="/api/v1/indicadores", tags=["Indi
 
 # ─── Health Check Endpoint (Liveness / Readiness Probe) ───────────────────────
 
-@app.get("/health", tags=["Sistema"], summary="Health Check da Aplicação")
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Sistema"], summary="Health Check da Aplicação")
 async def health_check():
     """
     Endpoint de verificação de disponibilidade operacional da API e conectividade com o banco de dados.
