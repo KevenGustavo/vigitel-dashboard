@@ -32,7 +32,7 @@ A arquitetura do ecossistema integra engenharia de dados, microsserviços analí
 ```mermaid
 flowchart TD
     subgraph Data_Source["1. Fonte de Microdados"]
-        CSV["Microdados VIGITEL (MS/SVS)<br/>2006 a 2024 (27 Capitais)"]
+        CSV["Microdados VIGITEL <br/>2006 a 2024 (27 Capitais)"]
     end
 
     subgraph Data_Warehouse["2. Pipeline ETL & Data Warehouse (PostgreSQL)"]
@@ -323,6 +323,6 @@ Os microdados utilizados são de domínio público, fornecidos pelo **Ministéri
 ---
 
 <p align="center">
-  <b>Desenvolvido com excelência técnica para o Trabalho de Conclusão de Curso (TCC).</b><br/>
-  <i>Engenharia de Dados • Ciência de Dados • Vigilância em Saúde Pública</i>
+  <b>Desenvolvido como Trabalho de Conclusão de Curso (TCC) do curso de Engenharia da Computação.</b><br/>
+  <i>Engenharia de Dados • Engenharia de Software •  Ciência de Dados • Vigilância em Saúde Pública</i>
 </p>
