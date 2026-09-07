@@ -140,7 +140,7 @@ O dashboard foi estruturado em módulos epidemiológicos baseados nos guias de s
 
 | Camada | Tecnologia | Justificativa Arquitetural |
 | :--- | :--- | :--- |
-| **Banco de Dados** | **PostgreSQL 18 / Neon DB** | Banco relacional robusto com suporte nativo a schemas para Arquitetura Medalhão e índices analíticos B-Tree. |
+| **Banco de Dados** | **PostgreSQL 18** | Banco relacional robusto com suporte nativo a schemas para Arquitetura Medalhão e índices analíticos B-Tree. |
 | **Backend & API** | **Python 3.12 / FastAPI** | Execução assíncrona (`asyncio` / `asyncpg`), tipagem estrita com Pydantic v2 e documentação OpenAPI interativa. |
 | **Frontend** | **Vue.js 3 (Composition API)** | Reatividade granular, componentização modular, excelente performance em dispositivos móveis e desktop. |
 | **Estilização** | **Tailwind CSS v4** | Design system utilitário com suporte a tema escuro profundo (*slate/emerald*), responsividade fluida e zero overhead de runtime. |
