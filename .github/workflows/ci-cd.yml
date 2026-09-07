@@ -149,7 +149,9 @@ jobs:
         run: docker build -t vigitel-web:ci src/web
 
       - name: Validate Docker Compose Configuration
-        run: docker compose config
+        run: |
+          test -f .env || cp .env.example .env
+          docker compose config
 
   # ============================================================================
   # 5. DEPLOY BACKEND (RENDER) - Automatic on Master Push
