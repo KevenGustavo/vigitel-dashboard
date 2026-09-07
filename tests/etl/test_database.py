@@ -1,7 +1,7 @@
 """
 Testes de infraestrutura: conexão com o banco e existência dos schemas.
 """
-import pytest
+
 from sqlalchemy import text
 from src.etl.database import engine
 
@@ -22,6 +22,6 @@ def test_schemas_exist():
         )
         schemas = {row[0] for row in conn.execute(query).fetchall()}
 
-    assert 'bronze' in schemas, "Schema bronze não encontrado"
-    assert 'silver' in schemas, "Schema silver não encontrado"
-    assert 'gold' in schemas, "Schema gold não encontrado"
+    assert "bronze" in schemas, "Schema bronze não encontrado"
+    assert "silver" in schemas, "Schema silver não encontrado"
+    assert "gold" in schemas, "Schema gold não encontrado"

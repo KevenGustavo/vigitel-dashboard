@@ -5,6 +5,7 @@ Executa as três camadas em sequência, com logging estruturado,
 medição precisa de tempo por camada e tratamento robusto de erros
 com códigos de saída UNIX para integração contínua (CI/CD) e cron jobs.
 """
+
 import sys
 import time
 import logging

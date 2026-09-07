@@ -7,6 +7,7 @@ Isso evita a geração de dezenas de milhões de tuplas mortas (table bloat) dec
 de comandos UPDATE repetidos sobre 833.000+ linhas, reduzindo o tempo de processamento
 de minutos para poucos segundos.
 """
+
 import time
 import logging
 
@@ -18,15 +19,33 @@ logger = logging.getLogger(__name__)
 
 # Mapeamento dos nomes de cidade crus para os nomes oficiais das 27 capitais brasileiras
 CAPITAIS_MAPEAMENTO = {
-    'rio branco': 'Rio Branco', 'maceio': 'Maceió', 'macapa': 'Macapá',
-    'manaus': 'Manaus', 'salvador': 'Salvador', 'fortaleza': 'Fortaleza',
-    'distrito federal': 'Brasília', 'vitoria': 'Vitória', 'goiania': 'Goiânia',
-    'sao luis': 'São Luís', 'cuiaba': 'Cuiabá', 'campo grande': 'Campo Grande',
-    'belo horizonte': 'Belo Horizonte', 'belem': 'Belém', 'joao pessoa': 'João Pessoa',
-    'curitiba': 'Curitiba', 'recife': 'Recife', 'teresina': 'Teresina',
-    'rio de janeiro': 'Rio de Janeiro', 'natal': 'Natal', 'porto alegre': 'Porto Alegre',
-    'porto velho': 'Porto Velho', 'boa vista': 'Boa Vista', 'florianopolis': 'Florianópolis',
-    'sao paulo': 'São Paulo', 'aracaju': 'Aracaju', 'palmas': 'Palmas',
+    "rio branco": "Rio Branco",
+    "maceio": "Maceió",
+    "macapa": "Macapá",
+    "manaus": "Manaus",
+    "salvador": "Salvador",
+    "fortaleza": "Fortaleza",
+    "distrito federal": "Brasília",
+    "vitoria": "Vitória",
+    "goiania": "Goiânia",
+    "sao luis": "São Luís",
+    "cuiaba": "Cuiabá",
+    "campo grande": "Campo Grande",
+    "belo horizonte": "Belo Horizonte",
+    "belem": "Belém",
+    "joao pessoa": "João Pessoa",
+    "curitiba": "Curitiba",
+    "recife": "Recife",
+    "teresina": "Teresina",
+    "rio de janeiro": "Rio de Janeiro",
+    "natal": "Natal",
+    "porto alegre": "Porto Alegre",
+    "porto velho": "Porto Velho",
+    "boa vista": "Boa Vista",
+    "florianopolis": "Florianópolis",
+    "sao paulo": "São Paulo",
+    "aracaju": "Aracaju",
+    "palmas": "Palmas",
 }
 
 
@@ -42,26 +61,24 @@ def _build_projection_sql() -> str:
     # Códigos mágicos para a cláusula IN (...) do PostgreSQL
     magic_codes_sql = ", ".join(repr(str(c)) for c in sorted(list(MAGIC_NULL_CODES), key=str))
 
-    projections = [
-        "gen_random_uuid()::text AS sk_registro"
-    ]
+    projections = ["gen_random_uuid()::text AS sk_registro"]
 
     for original, renamed in COLUMN_MAP.items():
         if renamed in CONTINUOUS_COLUMNS:
             # Colunas contínuas não sofrem eliminação de códigos mágicos
             projections.append(f'"{original}" AS "{renamed}"')
-        elif renamed == 'nome_cidade':
+        elif renamed == "nome_cidade":
             projections.append(f"""CASE LOWER(TRIM("{original}"))
             {cases_cidades}
             ELSE INITCAP(TRIM("{original}"))
         END AS "{renamed}" """)
-        elif renamed == 'sexo':
+        elif renamed == "sexo":
             projections.append(f"""CASE
             WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
             WHEN "{original}" IS NULL THEN NULL
             ELSE INITCAP(TRIM("{original}"))
         END AS "{renamed}" """)
-        elif renamed == 'raca_cor':
+        elif renamed == "raca_cor":
             projections.append(f"""CASE
             WHEN TRIM("{original}") IN ({magic_codes_sql}, 'não sabe') THEN NULL
             WHEN TRIM("{original}") = '80' THEN 'Outros'
@@ -70,19 +87,19 @@ def _build_projection_sql() -> str:
             WHEN "{original}" IS NULL THEN NULL
             ELSE INITCAP(TRIM("{original}"))
         END AS "{renamed}" """)
-        elif renamed == 'deslocamento_trabalho_ativo':
+        elif renamed == "deslocamento_trabalho_ativo":
             projections.append(f"""CASE
             WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
             WHEN TRIM("{original}") = '3' THEN 'não trabalha fora'
             ELSE "{original}"
         END AS "{renamed}" """)
-        elif renamed == 'tipo_exercicio_principal':
+        elif renamed == "tipo_exercicio_principal":
             projections.append(f"""CASE
             WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
             WHEN TRIM("{original}") = '17' THEN 'outros'
             ELSE "{original}"
         END AS "{renamed}" """)
-        elif renamed == 'duracao_minutos_lazer':
+        elif renamed == "duracao_minutos_lazer":
             projections.append(f"""CASE
             WHEN TRIM("{original}") IN ({magic_codes_sql}) THEN NULL
             WHEN TRIM("{original}") = '7' THEN '40 a 44'

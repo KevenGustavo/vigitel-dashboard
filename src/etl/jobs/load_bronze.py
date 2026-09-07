@@ -5,6 +5,7 @@ Lê o arquivo CSV do VIGITEL em chunks para controlar o consumo de memória
 (o arquivo completo tem ~1GB) e grava diretamente na tabela bronze.vigitel_raw.
 Nenhuma transformação é aplicada nesta camada.
 """
+
 import pandas as pd
 import time
 import logging

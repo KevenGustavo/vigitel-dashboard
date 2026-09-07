@@ -1,8 +1,8 @@
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
 from src.api.main import app
+
 
 @pytest_asyncio.fixture(scope="session")
 async def async_client():

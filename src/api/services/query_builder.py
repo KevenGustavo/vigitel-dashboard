@@ -13,17 +13,18 @@ FILTER_MAPPINGS = (
     ("raca_cor", dim_perfil.c.raca_cor, "in"),
 )
 
+
 def get_base_query() -> Select:
     """
     Constrói a base da query SQL com os JOINs do Star Schema.
     """
-    return select(fato_atividade_fisica).join(
-        dim_tempo, fato_atividade_fisica.c.sk_tempo == dim_tempo.c.sk_tempo
-    ).join(
-        dim_cidade, fato_atividade_fisica.c.sk_cidade == dim_cidade.c.sk_cidade
-    ).join(
-        dim_perfil, fato_atividade_fisica.c.sk_perfil == dim_perfil.c.sk_perfil
+    return (
+        select(fato_atividade_fisica)
+        .join(dim_tempo, fato_atividade_fisica.c.sk_tempo == dim_tempo.c.sk_tempo)
+        .join(dim_cidade, fato_atividade_fisica.c.sk_cidade == dim_cidade.c.sk_cidade)
+        .join(dim_perfil, fato_atividade_fisica.c.sk_perfil == dim_perfil.c.sk_perfil)
     )
+
 
 def is_valid_filter(val: Any) -> bool:
     """Verifica se o filtro possui um valor real, ignorando None, coleções vazias e objetos Query default."""
@@ -33,13 +34,16 @@ def is_valid_filter(val: Any) -> bool:
         return False
     return True
 
-def apply_filters(query: Select, filters: QueryFilters, exclude: Optional[List[str]] = None) -> Select:
+
+def apply_filters(
+    query: Select, filters: QueryFilters, exclude: Optional[List[str]] = None
+) -> Select:
     """
     Aplica as condições WHERE baseadas nos filtros preenchidos pelo usuário,
     permitindo omitir campos específicos (ex: para comparativos por sexo ou idade - LOD).
     """
     exclude_set = set(exclude) if exclude else set()
-    
+
     for field_name, column, op in FILTER_MAPPINGS:
         if field_name in exclude_set:
             continue
@@ -50,5 +54,5 @@ def apply_filters(query: Select, filters: QueryFilters, exclude: Optional[List[s
             query = query.where(column.in_(val))
         elif op == "eq":
             query = query.where(column == val)
-            
+
     return query

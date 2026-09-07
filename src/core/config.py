@@ -5,11 +5,13 @@ from dotenv import load_dotenv
 # Carrega as variáveis do arquivo .env (caso exista) na raiz do projeto
 load_dotenv()
 
+
 class Config:
     """
     Configurações centralizadas do projeto (ETL e API).
     Carrega as variáveis de ambiente com fallbacks seguros.
     """
+
     POSTGRES_USER = os.getenv("POSTGRES_USER", "admin")
     POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "adminpassword")
     POSTGRES_DB = os.getenv("POSTGRES_DB", "vigitel_warehouse")
@@ -22,7 +24,9 @@ class Config:
     DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
 
     # Configurações de CORS
-    CORS_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()]
+    CORS_ORIGINS = [
+        origin.strip() for origin in os.getenv("CORS_ORIGINS", "*").split(",") if origin.strip()
+    ]
 
     @classmethod
     def get_database_url_sync(cls) -> str:
@@ -41,7 +45,7 @@ class Config:
             f"postgresql+psycopg2://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}"
             f"@{cls.POSTGRES_HOST}:{cls.POSTGRES_PORT}/{cls.POSTGRES_DB}"
         )
-    
+
     @classmethod
     def get_database_url_async(cls) -> str:
         """Retorna a connection string para o SQLAlchemy (Assíncrono/asyncpg) usado pela API."""
@@ -55,7 +59,9 @@ class Config:
             valid_params = {}
             if "sslmode" in qs:
                 mode = qs["sslmode"][0]
-                valid_params["ssl"] = "require" if mode in ("require", "verify-ca", "verify-full") else "prefer"
+                valid_params["ssl"] = (
+                    "require" if mode in ("require", "verify-ca", "verify-full") else "prefer"
+                )
             elif "ssl" in qs:
                 valid_params["ssl"] = qs["ssl"][0]
 
@@ -67,5 +73,6 @@ class Config:
             f"postgresql+asyncpg://{cls.POSTGRES_USER}:{cls.POSTGRES_PASSWORD}"
             f"@{cls.POSTGRES_HOST}:{cls.POSTGRES_PORT}/{cls.POSTGRES_DB}"
         )
+
 
 config = Config()
