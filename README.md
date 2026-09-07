@@ -323,6 +323,6 @@ Os microdados utilizados são de domínio público, fornecidos pelo **Ministéri
 ---
 
 <p align="center">
-  <b>Desenvolvido como Trabalho de Conclusão de Curso (TCC) do curso de Engenharia da Computação.</b><br/>
+  <b>Desenvolvido como Trabalho de Conclusão de Curso (TCC) para Engenharia da Computação.</b><br/>
   <i>Engenharia de Dados • Engenharia de Software •  Ciência de Dados • Vigilância em Saúde Pública</i>
 </p>
