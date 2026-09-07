@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-surface/80 hover:bg-card border border-border/80 hover:border-border-hover rounded-xl p-3 sm:p-3.5 transition-all duration-200 flex flex-col justify-between group shadow-2xs hover:shadow-xs"
+    class="bg-surface/80 hover:bg-card border border-border/80 rounded-xl p-2.5 sm:p-3 xl:p-3.5 transition-all duration-200 flex flex-col justify-between group shadow-2xs hover:shadow-xs active:scale-[0.99]"
     :class="borderAccentClass"
   >
     <!-- Topo Linha 1: Marcador de Eixo, Peso PAF, Pontos Contribuídos e Popover Informativo -->
@@ -33,11 +33,12 @@
         </span>
       </div>
 
-      <!-- Botão/Popover Informativo Dark Stone -->
+      <!-- Botão/Popover Informativo Dark Stone (Hover/Touch) -->
       <div v-if="tooltipText" class="relative group/pop inline-flex items-center cursor-help shrink-0">
         <button
           type="button"
-          class="text-text-muted hover:text-text-secondary p-0.5 rounded transition-colors focus:outline-hidden cursor-help"
+          @click.stop="toggleTooltip"
+          class="text-text-muted hover:text-text-secondary p-0.5 rounded transition-colors focus:outline-hidden cursor-pointer active:scale-90"
           :aria-label="'Informações sobre ' + title"
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
@@ -46,7 +47,11 @@
         </button>
 
         <!-- Dropdown Popover com z-index alto -->
-        <div class="absolute right-0 top-full mt-2 w-68 p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/pop:opacity-100 group-hover/pop:visible transition-all duration-200 z-50 pointer-events-none text-left">
+        <div
+          @click.stop
+          class="absolute right-0 top-full mt-2 w-64 sm:w-68 max-w-[calc(100vw-32px)] p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/pop:opacity-100 group-hover/pop:visible transition-all duration-200 z-50 pointer-events-none text-left"
+          :class="{ '!opacity-100 !visible !pointer-events-auto': isTooltipOpen }"
+        >
           <div class="font-bold mb-1 text-[11px] uppercase tracking-wider font-display" :style="{ color: colorHex }">
             {{ tooltipTitle || title }}
           </div>
@@ -77,11 +82,11 @@
       <!-- Valor Prevalente -->
       <div v-if="isLoading" class="h-7 w-20 bg-stone-200 animate-pulse rounded"></div>
       <div v-else-if="!isAvailable" class="flex items-baseline gap-1.5">
-        <span class="text-2xl font-bold font-mono text-stone-400">—</span>
+        <span class="text-xl sm:text-2xl xl:text-[26px] font-bold font-mono text-stone-400">—</span>
         <span class="text-[10px] text-stone-500 font-sans font-medium">{{ unavailableNotice }}</span>
       </div>
       <div v-else-if="value !== null && value !== undefined" class="flex items-baseline gap-1">
-        <span class="text-2xl font-bold font-mono text-text-primary tracking-tight">
+        <span class="text-xl sm:text-2xl xl:text-[26px] font-bold font-mono text-text-primary tracking-tight">
           {{ Number(value).toFixed(1) }}%
         </span>
         <span class="text-[11px] text-text-secondary font-sans font-normal">prev.</span>
@@ -107,7 +112,7 @@
     </div>
 
     <!-- Base: Mini-Sparkline ECharts -->
-    <div class="h-10 sm:h-11 w-full relative">
+    <div class="h-9 sm:h-10 xl:h-11 2xl:h-12 w-full relative">
       <div v-if="isLoading" class="w-full h-full bg-stone-200/60 animate-pulse rounded"></div>
       <div v-else-if="!isAvailable" class="w-full h-full flex flex-col items-center justify-center text-[10px] text-stone-400 bg-stone-50/80 rounded border border-dashed border-stone-200 px-2 text-center">
         <span class="font-medium text-stone-500">Coleta iniciada em 2016</span>
@@ -128,6 +133,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useTouchTooltip } from '../../core/composables/useTouchTooltip'
+
+const { isOpen: isTooltipOpen, toggle: toggleTooltip } = useTouchTooltip()
 
 const props = defineProps({
   title: {
@@ -206,9 +214,9 @@ const props = defineProps({
 
 // Mapeamentos estáticos de classes (escopo de módulo para zero alocação em re-render)
 const BORDER_ACCENT_MAP = {
-  teal: 'hover:border-teal/40',
-  amber: 'hover:border-amber/40',
-  red: 'hover:border-red/40'
+  teal: 'hover:border-teal/60',
+  amber: 'hover:border-amber/60',
+  red: 'hover:border-red/60'
 }
 
 const WEIGHT_BADGE_MAP = {
@@ -272,6 +280,7 @@ const sparklineOption = computed(() => {
     },
     tooltip: {
       trigger: 'axis',
+      confine: true,
       backgroundColor: '#1C1917',
       borderColor: '#44403C',
       borderWidth: 1,

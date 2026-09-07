@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col justify-between h-full relative">
+  <div class="bg-card border border-border rounded-xl shadow-sm p-3.5 sm:p-4 xl:p-5 flex flex-col justify-between h-full relative">
     
     <!-- Topo: Cabeçalho com Layout em 2 Linhas Limpas -->
     <div class="pb-3 border-b border-border/60 space-y-2.5">
@@ -77,16 +77,25 @@
           </transition>
         </div>
 
-        <!-- Botão Informativo com Popover / Hover Explicativo -->
+        <!-- Botão Informativo com Popover / Hover Explicativo (Hover/Touch) -->
         <div class="relative group/info shrink-0 cursor-help">
-          <div class="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200/80 border border-stone-200 flex items-center justify-center text-text-secondary transition-colors shadow-2xs">
+          <button
+            type="button"
+            @click.stop="toggleInfo"
+            class="w-7 h-7 rounded-lg bg-stone-100 hover:bg-stone-200/80 active:scale-95 border border-stone-200 flex items-center justify-center text-text-secondary transition-colors shadow-2xs cursor-pointer"
+            aria-label="Informações sobre o indicador ativo"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
             </svg>
-          </div>
+          </button>
 
           <!-- Popover Explicativo da Variável Ativa -->
-          <div class="absolute right-0 top-full mt-2 w-72 p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-200 z-50 pointer-events-none">
+          <div
+            @click.stop
+            class="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-32px)] p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-200 z-50 pointer-events-none"
+            :class="{ '!opacity-100 !visible !pointer-events-auto': isInfoOpen }"
+          >
             <div class="font-bold mb-1 text-[11px] uppercase tracking-wider flex items-center gap-1.5" :class="currentOptionTitleColor">
               <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="currentOptionDotClass"></span>
               <span>{{ currentOptionLabel }}</span>
@@ -102,7 +111,7 @@
     </div>
 
     <!-- Centro: Lista Animada de Capitais com Vue TransitionGroup (FLIP Animation) -->
-    <div class="relative w-full h-[310px] my-2 overflow-y-auto pr-2 scrollbar-thin">
+    <div class="relative w-full h-[280px] sm:h-[320px] xl:h-[360px] 2xl:h-[400px] my-2 overflow-y-auto pr-2 scrollbar-thin">
       <!-- Loading Skeleton -->
       <div v-if="isLoading" class="space-y-3 pt-2">
         <div v-for="i in 6" :key="i" class="space-y-1 animate-pulse">
@@ -206,6 +215,9 @@ const props = defineProps({
 const emit = defineEmits(['change-indicador'])
 
 const { state } = useFilters()
+import { useTouchTooltip } from '../../core/composables/useTouchTooltip'
+
+const { isOpen: isInfoOpen, toggle: toggleInfo } = useTouchTooltip()
 
 const selectedIndicador = ref(props.currentIndicador)
 const isOpen = ref(false)

@@ -187,5 +187,80 @@ describe('Frontend Analytics & Data Processing Tests', () => {
     })
   })
 
+  describe('Mobile Filter Logic & Quick Chips', () => {
+    const REGION_MAPPING = {
+      'Rio Branco': 'Norte', 'Macapá': 'Norte', 'Manaus': 'Norte', 'Belém': 'Norte', 'Porto Velho': 'Norte', 'Boa Vista': 'Norte', 'Palmas': 'Norte',
+      'Maceió': 'Nordeste', 'Salvador': 'Nordeste', 'Fortaleza': 'Nordeste', 'São Luís': 'Nordeste', 'João Pessoa': 'Nordeste', 'Recife': 'Nordeste', 'Teresina': 'Nordeste', 'Natal': 'Nordeste', 'Aracaju': 'Nordeste',
+      'Brasília': 'Centro-Oeste', 'Goiânia': 'Centro-Oeste', 'Cuiabá': 'Centro-Oeste', 'Campo Grande': 'Centro-Oeste',
+      'Vitória': 'Sudeste', 'Belo Horizonte': 'Sudeste', 'São Paulo': 'Sudeste', 'Rio de Janeiro': 'Sudeste',
+      'Curitiba': 'Sul', 'Porto Alegre': 'Sul', 'Florianópolis': 'Sul'
+    }
+
+    test('deve mapear corretamente todas as 27 capitais brasileiras por macrorregião', () => {
+      const capitais = Object.keys(REGION_MAPPING)
+      assert.equal(capitais.length, 27)
+
+      const regiaoCounts = {}
+      capitais.forEach(c => {
+        const reg = REGION_MAPPING[c]
+        regiaoCounts[reg] = (regiaoCounts[reg] || 0) + 1
+      })
+
+      assert.equal(regiaoCounts['Norte'], 7)
+      assert.equal(regiaoCounts['Nordeste'], 9)
+      assert.equal(regiaoCounts['Centro-Oeste'], 4)
+      assert.equal(regiaoCounts['Sudeste'], 4)
+      assert.equal(regiaoCounts['Sul'], 3)
+    })
+
+    test('deve calcular contagem precisa de filtros ativos para o badge mobile', () => {
+      const calcActiveCount = (s) => {
+        let count = 0
+        if (s.ano_inicio !== 2006 || s.ano_fim !== 2024) count++
+        if (s.capitais && s.capitais.length > 0) count++
+        if (s.sexo && s.sexo !== 'Ambos') count++
+        if (s.faixa_etaria && s.faixa_etaria.length > 0) count++
+        if (s.escolaridade && s.escolaridade.length > 0) count++
+        if (s.raca_cor && s.raca_cor.length > 0) count++
+        return count
+      }
+
+      assert.equal(calcActiveCount({ ano_inicio: 2006, ano_fim: 2024, capitais: [], sexo: 'Ambos', faixa_etaria: [], escolaridade: [], raca_cor: [] }), 0)
+      assert.equal(calcActiveCount({ ano_inicio: 2018, ano_fim: 2024, capitais: ['Manaus'], sexo: 'Feminino', faixa_etaria: [], escolaridade: [], raca_cor: [] }), 3)
+    })
+
+    test('deve gerar chips rápidos de filtros ativos com rótulos amigáveis', () => {
+      const state = {
+        ano_inicio: 2018,
+        ano_fim: 2023,
+        capitais: ['São Paulo', 'Rio de Janeiro'],
+        sexo: 'Masculino',
+        faixa_etaria: ['18-24'],
+        escolaridade: [],
+        raca_cor: []
+      }
+
+      const chips = []
+      if (state.ano_inicio !== 2006 || state.ano_fim !== 2024) {
+        chips.push({ key: 'year', label: `${state.ano_inicio}–${state.ano_fim}` })
+      }
+      if (state.capitais && state.capitais.length > 0) {
+        chips.push({ key: 'city', label: state.capitais.length === 1 ? state.capitais[0] : `${state.capitais.length} Capitais` })
+      }
+      if (state.sexo && state.sexo !== 'Ambos') {
+        chips.push({ key: 'sex', label: state.sexo })
+      }
+      if (state.faixa_etaria && state.faixa_etaria.length > 0) {
+        chips.push({ key: 'age', label: state.faixa_etaria.length === 1 ? state.faixa_etaria[0] : `${state.faixa_etaria.length} Idades` })
+      }
+
+      assert.equal(chips.length, 4)
+      assert.equal(chips[0].label, '2018–2023')
+      assert.equal(chips[1].label, '2 Capitais')
+      assert.equal(chips[2].label, 'Masculino')
+      assert.equal(chips[3].label, '18-24')
+    })
+  })
+
 })
 

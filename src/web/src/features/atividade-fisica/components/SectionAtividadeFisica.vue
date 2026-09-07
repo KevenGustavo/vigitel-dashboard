@@ -19,7 +19,7 @@
     </div>
 
     <!-- Mini KPI Cards Declarativos por Domínio de Atividade Física -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 xl:gap-3">
       <VariableCard
         v-for="(item, index) in ATIVIDADE_ITEMS"
         :key="item.key"
@@ -36,7 +36,7 @@
     </div>
 
     <!-- Grid de Gráficos -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-4 xl:gap-5">
       
       <!-- Coluna 1 & 2: Gráfico de Evolução Temporal (ECharts) -->
       <div class="lg:col-span-2">

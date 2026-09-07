@@ -1,30 +1,44 @@
 <template>
   <header class="bg-surface border-b border-border">
     <!-- Linha Superior: Logo e Título -->
-    <div class="px-8 py-5 flex items-center justify-between">
-      <div class="flex items-center gap-4">
+    <div class="px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 xl:py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2.5 sm:gap-4 min-w-0">
         <!-- Ícone do App -->
-        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-teal to-emerald-600 shadow-sm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6 text-white">
+        <div class="flex h-9 w-9 sm:h-10 sm:w-10 xl:h-11 xl:w-11 items-center justify-center rounded-xl bg-gradient-to-br from-teal to-emerald-600 shadow-sm shrink-0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5 xl:h-5.5 xl:w-5.5 text-white">
             <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
             <path d="M3 10h2.5l2-3.5 3 8 2.5-4.5 1.5 2.5H21" />
           </svg>
         </div>
-        <div class="flex flex-col">
-          <h1 class="text-[22px] font-bold leading-[1.2] tracking-[-0.02em] text-text-primary font-display">
+        <div class="flex flex-col min-w-0">
+          <h1 class="text-[14px] sm:text-lg xl:text-xl font-bold leading-tight tracking-[-0.02em] text-text-primary font-display whitespace-nowrap">
             <span class="text-teal">VIGITEL</span> Atividade & Saúde
           </h1>
-          <p class="text-[13px] font-semibold uppercase tracking-[0.06em] text-text-muted font-display">
+          <p class="text-[9.5px] sm:text-xs font-semibold uppercase tracking-[0.04em] text-text-muted font-display whitespace-nowrap">
             Monitoramento Epidemiológico
           </p>
         </div>
       </div>
       
       <!-- Ação Global: Exportar Dados com Menu Especializado em Saúde -->
-      <div class="relative" ref="exportDropdownContainer">
+      <div class="relative shrink-0" ref="exportDropdownContainer">
+        <!-- Botão Mobile (Ícone touch-friendly de exportação) -->
         <button
           @click.stop="isExportMenuOpen = !isExportMenuOpen"
-          class="flex items-center gap-2 text-xs xl:text-sm font-semibold text-text-primary hover:text-teal bg-white hover:bg-teal/5 transition-all px-3 py-1.5 rounded-lg border border-border hover:border-teal/30 shadow-2xs cursor-pointer group"
+          class="sm:hidden flex items-center justify-center h-9 w-9 rounded-xl bg-white border border-border hover:border-teal/40 text-teal shadow-2xs active:scale-95 transition-all cursor-pointer"
+          :class="{ 'border-teal ring-2 ring-teal/20 bg-teal/5': isExportMenuOpen }"
+          title="Exportar dados para análise epidemiológica e estatística"
+          aria-label="Exportar dados"
+        >
+          <svg class="h-4.5 w-4.5 transition-transform duration-200" :class="{ 'scale-110': isExportMenuOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        </button>
+
+        <!-- Botão Desktop (Completo com texto e chevron) -->
+        <button
+          @click.stop="isExportMenuOpen = !isExportMenuOpen"
+          class="hidden sm:inline-flex items-center gap-2 text-xs xl:text-sm font-semibold text-text-primary hover:text-teal bg-white hover:bg-teal/5 transition-all px-3 py-1.5 rounded-lg border border-border hover:border-teal/30 shadow-2xs cursor-pointer group"
           :class="{ 'border-teal ring-2 ring-teal/15 text-teal': isExportMenuOpen }"
           title="Exportar dados para análise epidemiológica e estatística"
         >
@@ -48,7 +62,7 @@
         >
           <div
             v-if="isExportMenuOpen"
-            class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-border p-2 z-50 text-left font-sans cursor-default"
+            class="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-24px)] bg-white rounded-xl shadow-xl border border-border p-2 z-50 text-left font-sans cursor-default"
             @click.stop
           >
             <div class="px-3 py-2 border-b border-border mb-1.5">
@@ -115,8 +129,8 @@
       </div>
     </div>
 
-    <!-- Linha Inferior: Barra de Filtros Responsiva -->
-    <div class="bg-[#f8fafc] border-t border-border px-6 xl:px-8 py-2.5 flex items-center gap-2 xl:gap-3 w-full overflow-x-auto filters-scroll">
+    <!-- Linha Inferior Desktop (>= 640px): Barra de Filtros Horizontal Completa -->
+    <div class="hidden sm:flex bg-[#f8fafc] border-t border-border px-3.5 sm:px-6 lg:px-8 py-1.5 sm:py-2 items-center gap-2 xl:gap-3 w-full overflow-x-auto filters-scroll">
       
       <!-- Label "Filtros:" -->
       <div class="flex items-center gap-1.5 mr-1 shrink-0">
@@ -240,6 +254,75 @@
       </button>
 
     </div>
+
+    <!-- Linha Inferior Mobile (< 640px): Acesso Rápido ao Drawer de Filtros + Chips Ativos -->
+    <div class="flex sm:hidden bg-[#f8fafc] border-t border-border px-3.5 py-1.5 items-center gap-2 w-full">
+      <!-- Botão Principal: Abrir Modal de Filtros -->
+      <button
+        type="button"
+        @click="isMobileDrawerOpen = true"
+        class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border font-semibold text-xs transition-all shadow-2xs cursor-pointer shrink-0"
+        :class="hasActiveFilters 
+          ? 'bg-teal text-white border-teal shadow-xs' 
+          : 'bg-white text-text-primary border-border hover:border-teal/40'"
+      >
+        <svg class="h-3.5 w-3.5" :class="hasActiveFilters ? 'text-white' : 'text-teal'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+        </svg>
+        <span>Filtros</span>
+        <span 
+          v-if="activeFilterCount > 0"
+          class="ml-0.5 inline-flex items-center justify-center min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold font-mono"
+          :class="hasActiveFilters ? 'bg-white text-teal' : 'bg-teal text-white'"
+        >
+          {{ activeFilterCount }}
+        </span>
+      </button>
+
+      <!-- Scroll Horizontal de Chips: APENAS filtros modificados/selecionados -->
+      <div v-if="hasActiveFilters" class="flex-1 flex items-center gap-1.5 overflow-x-auto filters-scroll min-w-0 py-0.5">
+        <div
+          v-for="chip in activeFilterChips"
+          :key="chip.key"
+          class="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-md bg-white border border-teal/40 text-teal text-[11px] font-medium shrink-0 shadow-2xs"
+        >
+          <span @click="isMobileDrawerOpen = true" class="cursor-pointer font-sans truncate max-w-[110px]">{{ chip.label }}</span>
+          <button
+            type="button"
+            @click.stop="chip.clear"
+            class="w-4 h-4 rounded-full hover:bg-teal/15 flex items-center justify-center text-teal cursor-pointer"
+            :aria-label="`Remover filtro ${chip.label}`"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      <div v-else class="flex-1 flex items-center min-w-0 py-0.5 px-1">
+        <span @click="isMobileDrawerOpen = true" class="text-[11px] text-text-muted truncate cursor-pointer hover:text-teal transition-colors">
+          Nenhum filtro aplicado (Dados Nacionais)
+        </span>
+      </div>
+
+      <!-- Botão Rápido de Limpar (visível apenas no mobile quando houver filtros ativos) -->
+      <button
+        v-if="hasActiveFilters"
+        type="button"
+        @click="clearAllFilters"
+        class="p-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:border-red-300 transition-colors cursor-pointer shrink-0 shadow-2xs"
+        title="Restaurar todos os filtros para os padrões nacionais"
+        aria-label="Limpar todos os filtros"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+          <path fill-rule="evenodd" d="M4 2a1 1 0 0 1 1 1v2.101a7.002 7.002 0 0 1 11.601 2.566 1 1 0 1 1-1.885.666A5.002 5.002 0 0 0 5.999 7H9a1 1 0 0 1 0 2H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1Zm.008 9.057a1 1 0 0 1 1.276.61A5.002 5.002 0 0 0 14.001 13H11a1 1 0 1 1 0-2h5a1 1 0 0 1 1 1v5a1 1 0 1 1-2 0v-2.101a7.002 7.002 0 0 1-11.601-2.566 1 1 0 0 1 .61-1.276Z" clip-rule="evenodd" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Drawer Modal de Filtros para Mobile -->
+    <MobileFilterDrawer
+      v-model:isOpen="isMobileDrawerOpen"
+      :filterOptions="filterOptions"
+    />
   </header>
 
   <!-- ═══════════════════════════════════════════════════════════════
@@ -357,6 +440,7 @@ import { onMounted, onUnmounted, ref, reactive, computed } from 'vue'
 import { useFilters } from '../../composables/useFilters'
 import { useIndicadores } from '../../composables/useIndicadores'
 import FilterMultiSelectPopover from './FilterMultiSelectPopover.vue'
+import MobileFilterDrawer from './MobileFilterDrawer.vue'
 import {
   generateEpidemiologicalCsv,
   generateTidyDatasetCsv,
@@ -380,6 +464,9 @@ const {
   indicadorRanking
 } = useIndicadores()
 
+// ─── Estado do Drawer de Filtros Mobile ───────────────
+const isMobileDrawerOpen = ref(false)
+
 const hasActiveFilters = computed(() => {
   return (
     state.ano_inicio !== 2006 ||
@@ -390,6 +477,77 @@ const hasActiveFilters = computed(() => {
     (state.escolaridade && state.escolaridade.length > 0) ||
     (state.raca_cor && state.raca_cor.length > 0)
   )
+})
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (state.ano_inicio !== 2006 || state.ano_fim !== 2024) count++
+  if (state.capitais && state.capitais.length > 0) count++
+  if (state.sexo && state.sexo !== 'Ambos') count++
+  if (state.faixa_etaria && state.faixa_etaria.length > 0) count++
+  if (state.escolaridade && state.escolaridade.length > 0) count++
+  if (state.raca_cor && state.raca_cor.length > 0) count++
+  return count
+})
+
+const activeFilterChips = computed(() => {
+  const chips = []
+  if (state.ano_inicio !== 2006 || state.ano_fim !== 2024) {
+    chips.push({
+      key: 'year',
+      label: `${Math.min(state.ano_inicio, state.ano_fim)}–${Math.max(state.ano_inicio, state.ano_fim)}`,
+      clear: () => {
+        state.ano_inicio = 2006
+        state.ano_fim = 2024
+      }
+    })
+  }
+  if (state.capitais && state.capitais.length > 0) {
+    chips.push({
+      key: 'city',
+      label: state.capitais.length === 1 ? state.capitais[0] : `${state.capitais.length} Capitais`,
+      clear: () => {
+        state.capitais.length = 0
+      }
+    })
+  }
+  if (state.sexo && state.sexo !== 'Ambos') {
+    chips.push({
+      key: 'sex',
+      label: state.sexo,
+      clear: () => {
+        state.sexo = 'Ambos'
+      }
+    })
+  }
+  if (state.faixa_etaria && state.faixa_etaria.length > 0) {
+    chips.push({
+      key: 'age',
+      label: state.faixa_etaria.length === 1 ? state.faixa_etaria[0] : `${state.faixa_etaria.length} Idades`,
+      clear: () => {
+        state.faixa_etaria.length = 0
+      }
+    })
+  }
+  if (state.escolaridade && state.escolaridade.length > 0) {
+    chips.push({
+      key: 'education',
+      label: state.escolaridade.length === 1 ? state.escolaridade[0] : `${state.escolaridade.length} Escolaridades`,
+      clear: () => {
+        state.escolaridade.length = 0
+      }
+    })
+  }
+  if (state.raca_cor && state.raca_cor.length > 0) {
+    chips.push({
+      key: 'race',
+      label: state.raca_cor.length === 1 ? state.raca_cor[0] : `${state.raca_cor.length} Raça/Cor`,
+      clear: () => {
+        state.raca_cor.length = 0
+      }
+    })
+  }
+  return chips
 })
 
 // ═══════════════════════════════════════════════════════════════

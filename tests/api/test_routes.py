@@ -33,6 +33,17 @@ async def test_get_filtros(async_client: AsyncClient):
     assert None not in data["racas_cores"]
     assert len(data["cidades"]) == 27
 
+    # Validação de ordenação lógica de escolaridade (0-8 anos -> 9-11 anos -> 12+ anos -> Não informado)
+    escolaridades = data["escolaridades"]
+    assert isinstance(escolaridades, list)
+    if "0-8 anos" in escolaridades and "9-11 anos" in escolaridades and "12+ anos" in escolaridades:
+        idx_0_8 = escolaridades.index("0-8 anos")
+        idx_9_11 = escolaridades.index("9-11 anos")
+        idx_12_plus = escolaridades.index("12+ anos")
+        assert idx_0_8 < idx_9_11 < idx_12_plus, f"Ordem de escolaridade incorreta: {escolaridades}"
+    if "Não informado" in escolaridades:
+        assert escolaridades[-1] == "Não informado", "'Não informado' deve ser a última opção de escolaridade"
+
 async def test_kpi_atividade_fisica(async_client: AsyncClient):
     """Verifica o endpoint de Atividade Física com um filtro simples de ano."""
     response = await async_client.get("/api/v1/indicadores/atividade-fisica?ano=2024")

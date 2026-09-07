@@ -12,7 +12,7 @@
 
       <!-- Conteúdo das Páginas -->
       <main class="flex-1 overflow-y-auto" id="main-content">
-        <div class="mx-auto max-w-7xl px-8 pt-4 pb-8">
+        <div class="mx-auto w-full max-w-[1720px] px-3.5 sm:px-6 lg:px-8 xl:px-10 pt-2.5 sm:pt-4 pb-8">
           <Dashboard />
         </div>
       </main>

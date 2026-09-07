@@ -23,23 +23,29 @@
 
       <!-- Lado Direito: Badge de Classificação (1 Palavra) + Popover Metodológico GBD/PAF -->
       <div class="flex items-center gap-2">
-        <!-- Badge de Classificação com Popover Explicativo do Nível -->
+        <!-- Badge de Classificação com Popover Explicativo do Nível (Hover/Touch) -->
         <div
           v-if="!isLoading && healthClassification"
           class="relative group/status inline-flex items-center cursor-help"
           tabindex="0"
           :aria-label="`Nível de classificação: ${healthClassification.label}`"
         >
-          <span
-            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border tracking-wide transition-colors duration-200"
+          <button
+            type="button"
+            @click.stop="toggleStatus"
+            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border tracking-wide transition-colors duration-200 cursor-pointer active:scale-95"
             :class="healthClassification.badgeClass"
           >
             <span class="w-1.5 h-1.5 rounded-full mr-1.5" :style="{ backgroundColor: healthClassification.color }"></span>
             {{ healthClassification.label }}
-          </span>
+          </button>
 
           <!-- Popover Explicativo Detalhado do Nível -->
-          <div class="absolute right-0 top-full mt-2 w-76 p-3 bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/status:opacity-100 group-focus/status:opacity-100 group-hover/status:visible group-focus/status:visible transition-all duration-200 z-50 pointer-events-none text-left">
+          <div
+            @click.stop
+            class="absolute right-0 top-full mt-2 w-76 max-w-[calc(100vw-32px)] p-3 bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/status:opacity-100 group-focus/status:opacity-100 group-hover/status:visible group-focus/status:visible transition-all duration-200 z-50 pointer-events-none text-left"
+            :class="{ '!opacity-100 !visible !pointer-events-auto': isStatusOpen }"
+          >
             <div class="font-bold mb-1 text-[11px] uppercase tracking-wider font-display" :style="{ color: healthClassification.color }">
               Nível: {{ healthClassification.label }}
             </div>
@@ -54,11 +60,12 @@
           </div>
         </div>
 
-        <!-- Popover Informativo Metodológico Dark Stone -->
+        <!-- Popover Informativo Metodológico Dark Stone (Hover/Touch) -->
         <div class="relative group/method inline-flex items-center cursor-help">
           <button
             type="button"
-            class="text-xs text-text-secondary hover:text-text-primary bg-stone-100 hover:bg-stone-200/80 border border-stone-200/80 px-2 py-0.5 rounded-md font-medium transition-colors flex items-center gap-1.5 focus:outline-hidden"
+            @click.stop="toggleMethod"
+            class="text-xs text-text-secondary hover:text-text-primary bg-stone-100 hover:bg-stone-200/80 active:scale-95 border border-stone-200/80 px-2 py-0.5 rounded-md font-medium transition-colors flex items-center gap-1.5 focus:outline-hidden cursor-pointer"
             aria-haspopup="dialog"
             aria-label="Metodologia e fórmula do índice"
           >
@@ -69,7 +76,11 @@
           </button>
 
           <!-- Popover Dark Glass com Explicação Científica e Fórmula -->
-          <div class="absolute right-0 top-full mt-2 w-88 p-3.5 bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/method:opacity-100 group-focus-within/method:opacity-100 group-hover/method:visible group-focus-within/method:visible transition-all duration-200 z-50 pointer-events-none text-left">
+          <div
+            @click.stop
+            class="absolute right-0 top-full mt-2 w-88 max-w-[calc(100vw-32px)] p-3.5 bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/method:opacity-100 group-focus-within/method:opacity-100 group-hover/method:visible group-focus-within/method:visible transition-all duration-200 z-50 pointer-events-none text-left"
+            :class="{ '!opacity-100 !visible !pointer-events-auto': isMethodOpen }"
+          >
             <div class="font-bold mb-1 text-[11px] uppercase tracking-wider text-teal font-display">
               Fórmula e Ponderação Epidemiológica
             </div>
@@ -100,14 +111,14 @@
     <!-- Conteúdo Principal com Layout Harmonizado e Compacto -->
     <div class="p-3 sm:p-4">
       <!-- Loading Skeleton -->
-      <div v-if="isLoading" class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+      <div v-if="isLoading" class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 xl:gap-6 items-start">
         <div class="lg:col-span-5 flex flex-col items-center justify-center py-4 animate-pulse">
           <div class="w-48 h-24 bg-stone-200/80 rounded-t-full mb-3"></div>
           <div class="h-6 w-32 bg-stone-200/80 rounded mb-2"></div>
           <div class="h-3.5 w-44 bg-stone-200/80 rounded"></div>
         </div>
         <div class="lg:col-span-7 flex flex-col gap-2 sm:gap-2.5">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 xl:gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 xl:gap-3">
             <div v-for="i in 3" :key="i" class="h-28 bg-stone-100 animate-pulse rounded-xl border border-border/50"></div>
           </div>
           <div class="h-14 bg-stone-100 animate-pulse rounded-xl border border-border/50"></div>
@@ -124,11 +135,11 @@
       </div>
 
       <!-- Termômetro e Grid de Cards com Barra de Composição Inferior -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 items-start">
+      <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 xl:gap-6 items-start">
         <!-- Coluna Esquerda: Gauge Chart ECharts + Legenda das 3 Faixas -->
         <div class="lg:col-span-5 flex flex-col items-center justify-center relative">
           <!-- Container do Termômetro com Altura Calibrada e Ótima Legibilidade -->
-          <div class="relative w-full h-[210px] sm:h-[220px] min-h-[200px] flex items-center justify-center">
+          <div class="relative w-full h-[185px] sm:h-[200px] xl:h-[225px] 2xl:h-[245px] min-h-[180px] flex items-center justify-center">
             <v-chart
               :option="gaugeOption"
               autoresize
@@ -153,7 +164,7 @@
         <!-- Coluna Direita: Cards Elevados + Barra de Composição da Soma na Base -->
         <div class="lg:col-span-7 flex flex-col gap-2 sm:gap-2.5">
           <!-- Topo: Os 3 Mini-Sparkline Cards Lado a Lado (Posicionados no Topo) -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 xl:gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5 xl:gap-3">
             <!-- Card 1: Atividade Física -->
             <HealthSparkCard
               title="Atividade Física"
@@ -296,12 +307,16 @@
 <script setup>
 import { computed } from 'vue'
 import { useIndicadores } from '../../core/composables/useIndicadores'
+import { useTouchTooltip } from '../../core/composables/useTouchTooltip'
 import {
   getHealthIndexBreakdown,
   classifyHealthIndex,
   HEALTH_INDEX_COLORS
 } from '../utils/healthIndex'
 import HealthSparkCard from './HealthSparkCard.vue'
+
+const { isOpen: isStatusOpen, toggle: toggleStatus } = useTouchTooltip()
+const { isOpen: isMethodOpen, toggle: toggleMethod } = useTouchTooltip()
 
 const {
   visaoGeral,

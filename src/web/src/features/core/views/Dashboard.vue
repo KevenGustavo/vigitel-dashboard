@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-12 pb-12">
+  <div class="space-y-6 sm:space-y-8 xl:space-y-10 pb-8">
     
     <!-- Banner de Alerta em caso de falha de conexão com a API -->
     <div
@@ -35,24 +35,24 @@
 
     <!-- Seção 2: Atividade Física -->
     <section id="atividade-fisica" class="scroll-mt-24">
-      <div class="mb-6 border-b-2 border-teal pb-2">
-        <h2 class="text-xl font-bold tracking-tight text-teal uppercase font-display">Atividade Física</h2>
+      <div class="mb-3 sm:mb-4 border-b-2 border-teal pb-1.5">
+        <h2 class="text-base sm:text-lg xl:text-xl font-bold tracking-tight text-teal uppercase font-display">Atividade Física</h2>
       </div>
       <SectionAtividadeFisica />
     </section>
 
     <!-- Seção 3: Sedentarismo -->
     <section id="sedentarismo" class="scroll-mt-24">
-      <div class="mb-6 border-b-2 border-amber pb-2">
-        <h2 class="text-xl font-bold tracking-tight text-amber uppercase font-display">Sedentarismo</h2>
+      <div class="mb-3 sm:mb-4 border-b-2 border-amber pb-1.5">
+        <h2 class="text-base sm:text-lg xl:text-xl font-bold tracking-tight text-amber uppercase font-display">Sedentarismo</h2>
       </div>
       <SectionSedentarismo />
     </section>
 
     <!-- Seção 4: Desfechos de Saúde -->
     <section id="desfechos" class="scroll-mt-24">
-      <div class="mb-6 border-b-2 border-red pb-2">
-        <h2 class="text-xl font-bold tracking-tight text-red uppercase font-display">Desfechos de Saúde</h2>
+      <div class="mb-3 sm:mb-4 border-b-2 border-red pb-1.5">
+        <h2 class="text-base sm:text-lg xl:text-xl font-bold tracking-tight text-red uppercase font-display">Desfechos de Saúde</h2>
       </div>
       <SectionDesfechos />
     </section>

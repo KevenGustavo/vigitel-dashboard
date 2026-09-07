@@ -1,24 +1,33 @@
 <template>
-  <div class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col justify-between h-full relative">
+  <div class="bg-card border border-border rounded-xl shadow-sm p-3.5 sm:p-4 xl:p-5 flex flex-col justify-between h-full relative">
     
-    <!-- Topo: Cabeçalho do Card com Popover Explicativo no Hover -->
-    <div class="flex items-center justify-between pb-3 border-b border-border/60">
-      <div class="flex items-center gap-2">
+    <!-- Topo: Cabeçalho do Card com Popover Explicativo no Hover/Touch -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 pb-2.5 sm:pb-3 border-b border-border/60">
+      <div class="flex items-center gap-2 min-w-0">
         <div class="w-2.5 h-2.5 rounded-full bg-amber shrink-0 shadow-xs"></div>
-        <h3 class="text-sm font-bold text-text-primary uppercase tracking-wide font-display">
+        <h3 class="text-xs sm:text-sm font-bold text-text-primary uppercase tracking-wide font-display truncate sm:overflow-visible">
           Evolução Histórica do Sedentarismo
         </h3>
 
-        <!-- Botão Informativo com Popover Explicativo no Hover -->
+        <!-- Botão Informativo com Popover Explicativo no Hover/Touch -->
         <div class="relative group/info shrink-0 cursor-help">
-          <div class="w-5 h-5 rounded-full bg-stone-100 hover:bg-stone-200/80 border border-stone-200 flex items-center justify-center text-text-secondary transition-colors shadow-2xs">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+          <button
+            type="button"
+            @click.stop="toggleInfo"
+            class="w-5 h-5 rounded-full bg-stone-100 hover:bg-stone-200/80 border border-stone-200 flex items-center justify-center text-text-secondary transition-colors shadow-2xs cursor-pointer active:scale-95"
+            aria-label="Informações sobre Tempo Prolongado de Tela"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
             </svg>
-          </div>
+          </button>
 
           <!-- Popover Informativo Flutuante -->
-          <div class="absolute left-0 top-full mt-2 w-72 p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-200 z-50 pointer-events-none">
+          <div
+            @click.stop
+            class="absolute left-0 top-full mt-2 w-72 max-w-[calc(100vw-32px)] p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/info:opacity-100 group-hover/info:visible transition-all duration-200 z-50 pointer-events-none"
+            :class="{ '!opacity-100 !visible !pointer-events-auto': isInfoOpen }"
+          >
             <div class="font-bold text-amber-400 mb-1 text-[11px] uppercase tracking-wider">
               Tempo Prolongado de Tela
             </div>
@@ -30,17 +39,18 @@
         </div>
       </div>
 
-      <!-- Badge Informativo -->
-      <div class="flex items-center gap-1.5 text-xs text-amber font-medium bg-amber/10 px-2.5 py-1 rounded-md shrink-0">
+      <!-- Badge Informativo: Toque/Clique na legenda para isolar -->
+      <div class="flex items-center gap-1.5 text-[10.5px] sm:text-xs text-amber font-medium bg-amber/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md shrink-0 self-start sm:self-auto">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
         </svg>
-        <span>Clique na legenda para isolar</span>
+        <span class="hidden sm:inline">Clique na legenda para isolar</span>
+        <span class="sm:hidden">Toque na legenda para isolar</span>
       </div>
     </div>
 
     <!-- Centro: Gráfico ECharts -->
-    <div class="relative w-full h-[380px] mt-2">
+    <div class="relative w-full h-[290px] sm:h-[330px] xl:h-[370px] 2xl:h-[410px] mt-2">
       <!-- Loading Skeleton -->
       <div v-if="isLoading" class="absolute inset-0 z-10 bg-card">
         <ChartSkeleton type="line" />
@@ -70,17 +80,25 @@
         <span>Fonte: Sistema VIGITEL / Ministério da Saúde</span>
         <span class="inline-block w-1 h-1 rounded-full bg-stone-300"></span>
         
-        <!-- Badge de Atenção Metodológica com Popover no Hover -->
+        <!-- Badge de Atenção Metodológica com Popover no Hover/Touch -->
         <div class="relative group/metodo inline-flex items-center cursor-help">
-          <span class="text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200/70 transition-colors flex items-center gap-1">
+          <button
+            type="button"
+            @click.stop="toggleMetodo"
+            class="text-amber-800 font-semibold bg-amber-50 hover:bg-amber-100/90 active:scale-95 px-2 py-0.5 rounded-md border border-amber-200/70 transition-colors flex items-center gap-1 cursor-pointer"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 text-amber-600">
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
             </svg>
             <span>2016: Introdução das telas digitais (celular/computador)</span>
-          </span>
+          </button>
 
-          <!-- Popover Informativo Detalhado (Hover) -->
-          <div class="absolute bottom-full left-0 mb-2 w-80 sm:w-96 p-3.5 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/metodo:opacity-100 group-hover/metodo:visible transition-all duration-200 z-50 pointer-events-none">
+          <!-- Popover Informativo Detalhado (Hover/Touch) -->
+          <div
+            @click.stop
+            class="absolute bottom-full left-0 mb-2 w-72 sm:w-80 lg:w-96 max-w-[calc(100vw-32px)] p-3.5 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/metodo:opacity-100 group-hover/metodo:visible transition-all duration-200 z-50 pointer-events-none"
+            :class="{ '!opacity-100 !visible !pointer-events-auto': isMetodoOpen }"
+          >
             <div class="flex items-center gap-1.5 font-bold text-amber-400 mb-1.5 pb-1 border-b border-stone-700 text-[11px] uppercase tracking-wider">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
@@ -105,6 +123,11 @@
 import { computed } from 'vue'
 import ChartSkeleton from '../../core/components/ui/ChartSkeleton.vue'
 import { escapeHtml } from '../../../utils/sanitize'
+import { getAdaptivePrevalenceCeiling } from '../../../utils/chartScales'
+import { useTouchTooltip } from '../../core/composables/useTouchTooltip'
+
+const { isOpen: isInfoOpen, toggle: toggleInfo } = useTouchTooltip()
+const { isOpen: isMetodoOpen, toggle: toggleMetodo } = useTouchTooltip()
 
 const props = defineProps({
   data: {
@@ -134,9 +157,13 @@ const chartOption = computed(() => {
   const tvData = sorted.map(d => d.tempo_tv_maior_3h ?? null)
   const telaExcetoTvData = sorted.map(d => d.tempo_tela_exceto_tv_maior_3h ?? null)
 
+  const item2016 = sorted.find(d => Number(d.ano) === 2016)
+  const val2016 = item2016?.tempo_tela_maior_3h ?? 65
+
   return {
     tooltip: {
       trigger: 'axis',
+      confine: true,
       backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderColor: '#E2E8F0',
       borderWidth: 1,
@@ -228,7 +255,7 @@ const chartOption = computed(() => {
     yAxis: {
       type: 'value',
       min: 0,
-      max: 80,
+      max: (val) => getAdaptivePrevalenceCeiling(val, 80),
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel: {
@@ -327,7 +354,7 @@ const chartOption = computed(() => {
           data: [
             {
               name: 'Início Telas Digitais',
-              coord: ['2016', 72],
+              coord: ['2016', val2016],
               symbolOffset: [-17, 0]
             }
           ]

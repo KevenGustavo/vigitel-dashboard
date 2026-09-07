@@ -1,7 +1,7 @@
 <template>
-  <aside class="group flex h-full w-16 shrink-0 flex-col items-center border-r border-border bg-card">
+  <aside class="group hidden sm:flex h-full w-14 lg:w-16 shrink-0 flex-col items-center border-r border-border bg-card">
     <!-- Navigation Icons (Scroll & Sections) -->
-    <nav class="flex w-full flex-1 flex-col items-center gap-3 py-5">
+    <nav class="flex w-full flex-1 flex-col items-center gap-2 sm:gap-2.5 lg:gap-3 py-3 sm:py-4 lg:py-5">
       
       <!-- Seta para Cima: Navega para a seção anterior ou topo em 1 clique -->
       <button 

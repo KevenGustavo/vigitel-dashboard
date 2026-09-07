@@ -89,7 +89,22 @@ const fetchFilterOptions = async () => {
   if (filterOptions.value) return // Já carregado
   try {
     const response = await apiClient.get('/filtros')
-    filterOptions.value = response.data
+    const data = response.data
+    // Garante ordenação pedagógica progressiva de escolaridade
+    if (data?.escolaridades && Array.isArray(data.escolaridades)) {
+      const order = {
+        '0-8 anos': 1,
+        '0 a 8 anos': 1,
+        '9-11 anos': 2,
+        '9 a 11 anos': 2,
+        '12+ anos': 3,
+        '12 anos ou mais': 3,
+        '12 e mais': 3,
+        'Não informado': 99
+      }
+      data.escolaridades.sort((a, b) => (order[a] || 50) - (order[b] || 50))
+    }
+    filterOptions.value = data
   } catch (error) {
     console.error('Erro ao buscar opções de filtros:', error)
   }

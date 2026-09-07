@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-card border border-border rounded-xl shadow-sm p-5 flex flex-col justify-between h-full relative">
+  <div class="bg-card border border-border rounded-xl shadow-sm p-3.5 sm:p-4 xl:p-5 flex flex-col justify-between h-full relative">
     
     <!-- Topo: Cabeçalho do Card -->
     <div class="pb-2 border-b border-border/60">
@@ -11,17 +11,26 @@
           </h3>
         </div>
 
-        <!-- Badge Explicativo LOD -->
+        <!-- Badge Explicativo LOD (Hover/Touch) -->
         <div class="relative group/lod inline-flex items-center cursor-help">
-          <span class="text-[10.5px] text-text-secondary bg-stone-100 hover:bg-stone-200/80 border border-stone-200/80 px-2 py-0.5 rounded-md font-medium transition-colors flex items-center gap-1">
+          <button
+            type="button"
+            @click.stop="toggleLod"
+            class="text-[10.5px] text-text-secondary bg-stone-100 hover:bg-stone-200/80 active:scale-95 border border-stone-200/80 px-2 py-0.5 rounded-md font-medium transition-colors flex items-center gap-1 cursor-pointer"
+            aria-label="Informações sobre o comparativo intergênero"
+          >
             <span>Intergênero</span>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 text-stone-400">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 text-stone-400">
               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
             </svg>
-          </span>
+          </button>
 
           <!-- Popover Explicativo LOD -->
-          <div class="absolute right-0 top-full mt-2 w-72 p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/lod:opacity-100 group-hover/lod:visible transition-all duration-200 z-50 pointer-events-none">
+          <div
+            @click.stop
+            class="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-32px)] p-3 bg-stone-900 text-stone-100 rounded-lg shadow-xl border border-stone-700 text-xs opacity-0 invisible group-hover/lod:opacity-100 group-hover/lod:visible transition-all duration-200 z-50 pointer-events-none text-left"
+            :class="{ '!opacity-100 !visible !pointer-events-auto': isLodOpen }"
+          >
             <div class="font-bold text-teal-400 mb-1 text-[11px] uppercase tracking-wider">
               Comparativo Intergênero
             </div>
@@ -35,7 +44,7 @@
     </div>
 
     <!-- Centro: Gráfico Radar do ECharts -->
-    <div class="relative w-full h-[330px] my-1">
+    <div class="relative w-full h-[290px] sm:h-[330px] xl:h-[370px] 2xl:h-[410px] my-1">
       <!-- Loading Skeleton -->
       <div v-if="isLoading" class="absolute inset-0 z-10 bg-card">
         <ChartSkeleton type="radar" />
@@ -81,6 +90,10 @@
 import { computed } from 'vue'
 import ChartSkeleton from '../../core/components/ui/ChartSkeleton.vue'
 import { escapeHtml } from '../../../utils/sanitize'
+import { getAdaptivePrevalenceCeiling } from '../../../utils/chartScales'
+import { useTouchTooltip } from '../../core/composables/useTouchTooltip'
+
+const { isOpen: isLodOpen, toggle: toggleLod } = useTouchTooltip()
 
 const props = defineProps({
   data: {
@@ -119,9 +132,14 @@ const chartOption = computed(() => {
     fem.atinge_150min || 0
   ]
 
+  const allVals = [...mascValues, ...femValues]
+  const peak = Math.max(...allVals, 0)
+  const radarMax = getAdaptivePrevalenceCeiling(peak, 70)
+
   return {
     tooltip: {
       trigger: 'item',
+      confine: true,
       backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderColor: '#E2E8F0',
       borderWidth: 1,
@@ -156,11 +174,11 @@ const chartOption = computed(() => {
     },
     radar: {
       indicator: [
-        { name: 'Lazer & Esporte', max: 70 },
-        { name: 'Trabalho', max: 70 },
-        { name: 'Deslocamento', max: 70 },
-        { name: 'Doméstico', max: 70 },
-        { name: 'Meta OMS', max: 70 }
+        { name: 'Lazer & Esporte', max: radarMax },
+        { name: 'Trabalho', max: radarMax },
+        { name: 'Deslocamento', max: radarMax },
+        { name: 'Doméstico', max: radarMax },
+        { name: 'Meta OMS', max: radarMax }
       ],
       shape: 'polygon',
       splitNumber: 4,
