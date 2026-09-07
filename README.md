@@ -6,7 +6,7 @@
 [![VIGITEL CI/CD Pipeline](https://github.com/KevenGustavo/vigitel-dashboard/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/KevenGustavo/vigitel-dashboard/actions/workflows/ci-cd.yml)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Vue 3](https://img.shields.io/badge/Vue.js-3.5-4FC08D.svg?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -140,7 +140,7 @@ O dashboard foi estruturado em módulos epidemiológicos baseados nos guias de s
 
 | Camada | Tecnologia | Justificativa Arquitetural |
 | :--- | :--- | :--- |
-| **Banco de Dados** | **PostgreSQL 15 / Neon DB** | Banco relacional robusto com suporte nativo a schemas para Arquitetura Medalhão e índices analíticos B-Tree. |
+| **Banco de Dados** | **PostgreSQL 18 / Neon DB** | Banco relacional robusto com suporte nativo a schemas para Arquitetura Medalhão e índices analíticos B-Tree. |
 | **Backend & API** | **Python 3.12 / FastAPI** | Execução assíncrona (`asyncio` / `asyncpg`), tipagem estrita com Pydantic v2 e documentação OpenAPI interativa. |
 | **Frontend** | **Vue.js 3 (Composition API)** | Reatividade granular, componentização modular, excelente performance em dispositivos móveis e desktop. |
 | **Estilização** | **Tailwind CSS v4** | Design system utilitário com suporte a tema escuro profundo (*slate/emerald*), responsividade fluida e zero overhead de runtime. |
@@ -192,7 +192,7 @@ graph TD
 ### Pré-requisitos
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/) **OU**
-- [Python 3.12+](https://www.python.org/) e [Node.js 20+](https://nodejs.org/)
+- [Python 3.12+](https://www.python.org/) e [Node.js 22+ (LTS)](https://nodejs.org/)
 
 ---
 
