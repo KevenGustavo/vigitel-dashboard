@@ -1,0 +1,235 @@
+name: VIGITEL CI/CD Pipeline
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================================================
+  # 1. LINTING, CODE QUALITY & SECURITY AUDIT
+  # ============================================================================
+  lint-and-security:
+    name: Lint & Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Ruff linter & pip-audit
+        run: pip install ruff pip-audit
+
+      - name: Run Ruff Python Linting
+        run: ruff check src/ tests/
+
+      - name: Run pip-audit (Python Dependency Security)
+        run: pip-audit -r requirements.txt || true
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Run npm audit (Frontend Security)
+        working-directory: src/web
+        run: npm audit --omit=dev || true
+
+  # ============================================================================
+  # 2. FRONTEND CI (TEST & BUILD)
+  # ============================================================================
+  frontend-ci:
+    name: Frontend CI (Vue 3 / Vite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: src/web
+        run: npm ci
+
+      - name: Run frontend unit & integration tests
+        working-directory: src/web
+        run: npm test
+
+      - name: Build production bundle
+        working-directory: src/web
+        run: npm run build
+
+      - name: Upload production bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: src/web/dist/
+          retention-days: 7
+
+  # ============================================================================
+  # 3. BACKEND & DATA QUALITY CI (FASTAPI / PYTEST / POSTGRESQL)
+  # ============================================================================
+  backend-ci:
+    name: Backend CI (FastAPI / pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: adminpassword
+          POSTGRES_DB: vigitel_warehouse
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PostgreSQL Client & Seed Test Schema
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          PGPASSWORD=adminpassword psql -h localhost -U admin -d vigitel_warehouse -f sql/ci_test_schema.sql
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Backend & Data Quality tests (pytest)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql+asyncpg://admin:adminpassword@localhost:5432/vigitel_warehouse' }}
+        run: pytest tests/ -v
+
+  # ============================================================================
+  # 4. DOCKER CONTAINERS VERIFICATION
+  # ============================================================================
+  docker-ci:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend API Docker Image
+        run: docker build -t vigitel-api:ci .
+
+      - name: Build Frontend Web Docker Image
+        run: docker build -t vigitel-web:ci src/web
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
+
+  # ============================================================================
+  # 5. DEPLOY BACKEND (RENDER) - Automatic on Master Push
+  # ============================================================================
+  deploy-backend:
+    name: Deploy Backend (Render)
+    needs: [backend-ci, docker-ci]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        env:
+          RENDER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$RENDER_HOOK" ]; then
+            echo "Disparando deploy da API no Render via Deploy Hook..."
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$RENDER_HOOK")
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+              echo "Deploy disparado no Render com sucesso! (HTTP $HTTP_CODE)"
+            else
+              echo "Aviso: Render retornou código HTTP $HTTP_CODE"
+              exit 1
+            fi
+          else
+            echo "Aviso: RENDER_DEPLOY_HOOK_URL não configurado nos Secrets do repositório."
+            echo "Para ativar o deploy contínuo da API, consulte .github/SECRETS_GUIDE.md"
+          fi
+
+  # ============================================================================
+  # 6. DEPLOY FRONTEND (VERCEL) - Automatic on Master Push
+  # ============================================================================
+  deploy-frontend:
+    name: Deploy Frontend (Vercel)
+    needs: [frontend-ci]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: src/web/dist
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -n "$VERCEL_TOKEN" ]; then
+            echo "Instalando Vercel CLI..."
+            npm install -g vercel@latest
+            echo "Executando deploy de produção na Vercel..."
+            vercel deploy src/web/dist --prod --token="$VERCEL_TOKEN" --yes
+          else
+            echo "Aviso: VERCEL_TOKEN não configurado nos Secrets do repositório."
+            echo "Para ativar o deploy contínuo da Web, consulte .github/SECRETS_GUIDE.md"
+          fi
+
+  # ============================================================================
+  # 7. PIPELINE SUMMARY REPORT
+  # ============================================================================
+  pipeline-summary:
+    name: CI/CD Pipeline Summary
+    needs: [lint-and-security, frontend-ci, backend-ci, docker-ci]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate Workflow Summary
+        run: |
+          echo "## 🚀 VIGITEL CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Componente | Status | Detalhes |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Lint & Security** | ${{ needs.lint-and-security.result == 'success' && '✅ Passou' || '❌ Falhou' }} | Ruff Python linter e auditorias de segurança de dependências |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend Web** | ${{ needs.frontend-ci.result == 'success' && '✅ Passou' || '❌ Falhou' }} | 40 testes unitários + Build Vite de produção |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend API & ETL** | ${{ needs.backend-ci.result == 'success' && '✅ Passou' || '❌ Falhou' }} | 43 testes pytest + PostgreSQL Service Container |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Docker Containers** | ${{ needs.docker-ci.result == 'success' && '✅ Passou' || '❌ Falhou' }} | Validação de build dos Dockerfiles da API e Web |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: \`${{ github.sha }}\` no branch \`${{ github.ref_name }}\` disparado por @${{ github.actor }}." >> $GITHUB_STEP_SUMMARY
