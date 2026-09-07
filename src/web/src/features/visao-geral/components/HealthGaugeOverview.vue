@@ -1,11 +1,11 @@
 <template>
   <div
-    class="bg-card border border-border rounded-xl shadow-xs overflow-hidden transition-all duration-300"
+    class="bg-card border border-border rounded-xl shadow-xs transition-all duration-300 relative z-20 overflow-visible"
     role="region"
     aria-label="Índice de Saúde Populacional"
   >
     <!-- Header: Título, Badge de Nível (1 Palavra) e Popovers Explicativos -->
-    <div class="px-4 py-2.5 border-b border-border/80 flex flex-wrap items-center justify-between gap-2 bg-surface/50">
+    <div class="px-4 py-2.5 border-b border-border/80 flex flex-wrap items-center justify-between gap-2 bg-surface/50 rounded-t-xl relative z-30">
       <div class="flex items-center gap-2">
         <div
           class="w-2.5 h-2.5 rounded-full ring-4 transition-all duration-300"
@@ -43,20 +43,22 @@
           <!-- Popover Explicativo Detalhado do Nível -->
           <div
             @click.stop
-            class="absolute right-0 top-full mt-2 w-76 max-w-[calc(100vw-32px)] p-3 bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/status:opacity-100 group-focus/status:opacity-100 group-hover/status:visible group-focus/status:visible transition-all duration-200 z-50 pointer-events-none text-left"
+            class="absolute right-0 top-full mt-2 w-76 max-w-[calc(100vw-32px)] bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/status:opacity-100 group-focus/status:opacity-100 group-hover/status:visible group-focus/status:visible transition-all duration-200 z-50 pointer-events-none text-left"
             :class="{ '!opacity-100 !visible !pointer-events-auto': isStatusOpen }"
           >
-            <div class="font-bold mb-1 text-[11px] uppercase tracking-wider font-display" :style="{ color: healthClassification.color }">
-              Nível: {{ healthClassification.label }}
-            </div>
-            <p class="leading-relaxed text-stone-200 text-[11px] font-sans">
-              {{ healthClassification.description }}
-            </p>
-            <div class="mt-2 pt-1.5 border-t border-stone-800 text-[10px] text-stone-400 flex items-center justify-between font-mono">
-              <span>Faixas da Escala:</span>
-              <span class="text-stone-300">&lt;50 Crítico | 50–69 Atenção | ≥70 Favorável</span>
-            </div>
             <div class="w-2.5 h-2.5 bg-stone-900 border-t border-l border-stone-700 transform rotate-45 absolute -top-1.5 right-6"></div>
+            <div class="p-3 max-h-[80vh] overflow-y-auto">
+              <div class="font-bold mb-1 text-[11px] uppercase tracking-wider font-display" :style="{ color: healthClassification.color }">
+                Nível: {{ healthClassification.label }}
+              </div>
+              <p class="leading-relaxed text-stone-200 text-[11px] font-sans">
+                {{ healthClassification.description }}
+              </p>
+              <div class="mt-2 pt-1.5 border-t border-stone-800 text-[10px] text-stone-400 flex items-center justify-between font-mono">
+                <span>Faixas da Escala:</span>
+                <span class="text-stone-300">&lt;50 Crítico | 50–69 Atenção | ≥70 Favorável</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -78,31 +80,33 @@
           <!-- Popover Dark Glass com Explicação Científica e Fórmula -->
           <div
             @click.stop
-            class="absolute right-0 top-full mt-2 w-88 max-w-[calc(100vw-32px)] p-3.5 bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/method:opacity-100 group-focus-within/method:opacity-100 group-hover/method:visible group-focus-within/method:visible transition-all duration-200 z-50 pointer-events-none text-left"
+            class="absolute right-0 top-full mt-2 w-88 max-w-[calc(100vw-32px)] bg-stone-900 text-stone-100 rounded-lg shadow-2xl border border-stone-700 text-xs opacity-0 invisible group-hover/method:opacity-100 group-focus-within/method:opacity-100 group-hover/method:visible group-focus-within/method:visible transition-all duration-200 z-50 pointer-events-none text-left"
             :class="{ '!opacity-100 !visible !pointer-events-auto': isMethodOpen }"
           >
-            <div class="font-bold mb-1 text-[11px] uppercase tracking-wider text-teal font-display">
-              Fórmula e Ponderação Epidemiológica
-            </div>
-            <p class="leading-relaxed text-stone-200 text-[11px] font-sans">
-              O score é a <b>soma ponderada direta</b> dos eixos de vigilância VIGITEL, fundamentada na Fração Atribuível Populacional (PAF) do <b>GBD 2021 (IHME/Lancet)</b> para o Brasil:
-            </p>
-            <div class="my-2 p-2 rounded bg-stone-800 border border-stone-700 font-mono text-[10.5px] text-stone-200 space-y-1">
-              <div class="text-[10px] text-teal-400 font-sans font-bold uppercase tracking-wider">Período 2016–2023 (3 Eixos):</div>
-              <div><span class="text-teal font-bold">+ (Atividade Física × 0.30)</span> <span class="text-stone-400">→ protetor</span></div>
-              <div><span class="text-amber font-bold">+ ((100 - Telas) × 0.20)</span> <span class="text-stone-400">→ risco invertido</span></div>
-              <div><span class="text-red font-bold">+ ((100 - Obesidade) × 0.50)</span> <span class="text-stone-400">→ maior impacto</span></div>
-            </div>
-            <div class="my-2 p-2 rounded bg-stone-800/80 border border-stone-700 font-mono text-[10.5px] text-stone-200 space-y-1">
-              <div class="text-[10px] text-amber-400 font-sans font-bold uppercase tracking-wider">Período Pré-2016 (Adaptado 2 Eixos):</div>
-              <div class="text-[10px] text-stone-300 font-sans leading-tight">Como telas não eram coletadas no VIGITEL antes de 2016, aplica-se a renormalização proporcional:</div>
-              <div><span class="text-teal font-bold">+ (Atividade Física × 0.375)</span> <span class="text-stone-400">(37,5%)</span></div>
-              <div><span class="text-red font-bold">+ ((100 - Obesidade) × 0.625)</span> <span class="text-stone-400">(62,5%)</span></div>
-            </div>
-            <p class="text-[10px] text-stone-300 font-sans">
-              * Fatores de risco são invertidos: quanto menor o sedentarismo e a obesidade, maior a pontuação de saúde gerada.
-            </p>
             <div class="w-2.5 h-2.5 bg-stone-900 border-t border-l border-stone-700 transform rotate-45 absolute -top-1.5 right-4"></div>
+            <div class="p-3.5 max-h-[80vh] overflow-y-auto space-y-2">
+              <div class="font-bold text-[11px] uppercase tracking-wider text-teal font-display">
+                Fórmula e Ponderação Epidemiológica
+              </div>
+              <p class="leading-relaxed text-stone-200 text-[11px] font-sans">
+                O score é a <b>soma ponderada direta</b> dos eixos de vigilância VIGITEL, fundamentada na Fração Atribuível Populacional (PAF) do <b>GBD 2021 (IHME/Lancet)</b> para o Brasil:
+              </p>
+              <div class="p-2 rounded bg-stone-800 border border-stone-700 font-mono text-[10.5px] text-stone-200 space-y-1">
+                <div class="text-[10px] text-teal-400 font-sans font-bold uppercase tracking-wider">Período 2016–2023 (3 Eixos):</div>
+                <div><span class="text-teal font-bold">+ (Atividade Física × 0.30)</span> <span class="text-stone-400">→ protetor</span></div>
+                <div><span class="text-amber font-bold">+ ((100 - Telas) × 0.20)</span> <span class="text-stone-400">→ risco invertido</span></div>
+                <div><span class="text-red font-bold">+ ((100 - Obesidade) × 0.50)</span> <span class="text-stone-400">→ maior impacto</span></div>
+              </div>
+              <div class="p-2 rounded bg-stone-800/80 border border-stone-700 font-mono text-[10.5px] text-stone-200 space-y-1">
+                <div class="text-[10px] text-amber-400 font-sans font-bold uppercase tracking-wider">Período Pré-2016 (Adaptado 2 Eixos):</div>
+                <div class="text-[10px] text-stone-300 font-sans leading-tight">Como telas não eram coletadas no VIGITEL antes de 2016, aplica-se a renormalização proporcional:</div>
+                <div><span class="text-teal font-bold">+ (Atividade Física × 0.375)</span> <span class="text-stone-400">(37,5%)</span></div>
+                <div><span class="text-red font-bold">+ ((100 - Obesidade) × 0.625)</span> <span class="text-stone-400">(62,5%)</span></div>
+              </div>
+              <p class="text-[10px] text-stone-300 font-sans">
+                * Fatores de risco são invertidos: quanto menor o sedentarismo e a obesidade, maior a pontuação de saúde gerada.
+              </p>
+            </div>
           </div>
         </div>
       </div>
