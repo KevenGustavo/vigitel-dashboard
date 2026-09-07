@@ -11,13 +11,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # ============================================================================
-  # 1. LINTING, CODE QUALITY & SECURITY AUDIT
+  # STAGE 1: GATEKEEPER / LINTING, CODE QUALITY & SECURITY AUDIT
   # ============================================================================
   lint-and-security:
-    name: Lint & Security Audit
+    name: 1. Lint & Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,14 +50,16 @@ jobs:
 
       - name: Run npm audit (Frontend Security)
         working-directory: src/web
-        run: npm audit --omit=dev || true
+        run: npm audit --omit=dev --audit-level=critical || true
 
   # ============================================================================
-  # 2. FRONTEND CI (TEST & BUILD)
+  # STAGE 2: PARALLEL VERIFICATION & TESTS (FRONTEND & BACKEND)
   # ============================================================================
   frontend-ci:
-    name: Frontend CI (Vue 3 / Vite)
+    name: 2. Frontend CI (Vue 3 / Vite)
+    needs: [lint-and-security]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -84,12 +90,11 @@ jobs:
           path: src/web/dist/
           retention-days: 7
 
-  # ============================================================================
-  # 3. BACKEND & DATA QUALITY CI (FASTAPI / PYTEST / POSTGRESQL)
-  # ============================================================================
   backend-ci:
-    name: Backend CI (FastAPI / pytest)
+    name: 3. Backend CI (FastAPI / pytest)
+    needs: [lint-and-security]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:15-alpine
@@ -130,11 +135,13 @@ jobs:
         run: pytest tests/ -v
 
   # ============================================================================
-  # 4. DOCKER CONTAINERS VERIFICATION
+  # STAGE 3: CONTAINER INTEGRATION & PACKAGING
   # ============================================================================
   docker-ci:
-    name: Docker Build Check
+    name: 4. Docker Build Check
+    needs: [frontend-ci, backend-ci]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -154,13 +161,14 @@ jobs:
           docker compose config
 
   # ============================================================================
-  # 5. DEPLOY BACKEND (RENDER) - Automatic on Master Push
+  # STAGE 4: PRODUCTION CONTINUOUS DEPLOYMENT (MASTER BRANCH ONLY)
   # ============================================================================
   deploy-backend:
-    name: Deploy Backend (Render)
-    needs: [backend-ci, docker-ci]
+    name: 5. Deploy Backend (Render)
+    needs: [lint-and-security, backend-ci, docker-ci]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Trigger Render Deploy Hook
         env:
@@ -180,14 +188,12 @@ jobs:
             echo "Para ativar o deploy contínuo da API, consulte .github/SECRETS_GUIDE.md"
           fi
 
-  # ============================================================================
-  # 6. DEPLOY FRONTEND (VERCEL) - Automatic on Master Push
-  # ============================================================================
   deploy-frontend:
-    name: Deploy Frontend (Vercel)
-    needs: [frontend-ci]
+    name: 6. Deploy Frontend (Vercel)
+    needs: [lint-and-security, frontend-ci, docker-ci]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -215,23 +221,25 @@ jobs:
           fi
 
   # ============================================================================
-  # 7. PIPELINE SUMMARY REPORT
+  # STAGE 5: OBSERVABILITY & PIPELINE SUMMARY REPORT
   # ============================================================================
   pipeline-summary:
-    name: CI/CD Pipeline Summary
-    needs: [lint-and-security, frontend-ci, backend-ci, docker-ci]
+    name: 7. CI/CD Pipeline Summary
+    needs: [lint-and-security, frontend-ci, backend-ci, docker-ci, deploy-backend, deploy-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Generate Workflow Summary
         run: |
-          echo "## 🚀 VIGITEL CI/CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 VIGITEL CI/CD Pipeline Summary (DAG Execution)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Componente | Status | Detalhes |" >> $GITHUB_STEP_SUMMARY
+          echo "| Estágio / Componente | Status | Detalhes |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Lint & Security** | ${{ needs.lint-and-security.result == 'success' && '✅ Passou' || '❌ Falhou' }} | Ruff Python linter e auditorias de segurança de dependências |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Frontend Web** | ${{ needs.frontend-ci.result == 'success' && '✅ Passou' || '❌ Falhou' }} | 40 testes unitários + Build Vite de produção |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Backend API & ETL** | ${{ needs.backend-ci.result == 'success' && '✅ Passou' || '❌ Falhou' }} | 43 testes pytest + PostgreSQL Service Container |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Docker Containers** | ${{ needs.docker-ci.result == 'success' && '✅ Passou' || '❌ Falhou' }} | Validação de build dos Dockerfiles da API e Web |" >> $GITHUB_STEP_SUMMARY
+          echo "| **1. Lint & Security Gate** | ${{ needs.lint-and-security.result == 'success' && '✅ Passou' || (needs.lint-and-security.result == 'skipped' && '⏭️ Ignorado' || '❌ Falhou') }} | Ruff Python linter e auditorias de segurança |" >> $GITHUB_STEP_SUMMARY
+          echo "| **2. Frontend Web CI** | ${{ needs.frontend-ci.result == 'success' && '✅ Passou' || (needs.frontend-ci.result == 'skipped' && '⏭️ Ignorado' || '❌ Falhou') }} | 40 testes unitários + Build Vite de produção |" >> $GITHUB_STEP_SUMMARY
+          echo "| **3. Backend API & ETL CI** | ${{ needs.backend-ci.result == 'success' && '✅ Passou' || (needs.backend-ci.result == 'skipped' && '⏭️ Ignorado' || '❌ Falhou') }} | 43 testes pytest + PostgreSQL Service Container |" >> $GITHUB_STEP_SUMMARY
+          echo "| **4. Docker Containers CI** | ${{ needs.docker-ci.result == 'success' && '✅ Passou' || (needs.docker-ci.result == 'skipped' && '⏭️ Ignorado' || '❌ Falhou') }} | Validação de build dos Dockerfiles e Compose |" >> $GITHUB_STEP_SUMMARY
+          echo "| **5. Deploy API (Render)** | ${{ needs.deploy-backend.result == 'success' && '✅ Passou' || (needs.deploy-backend.result == 'skipped' && '⏭️ Ignorado (PR)' || '❌ Falhou') }} | Continuous Deployment no Render Cloud |" >> $GITHUB_STEP_SUMMARY
+          echo "| **6. Deploy Web (Vercel)** | ${{ needs.deploy-frontend.result == 'success' && '✅ Passou' || (needs.deploy-frontend.result == 'skipped' && '⏭️ Ignorado (PR)' || '❌ Falhou') }} | Continuous Deployment no Vercel Edge Network |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Commit: \`${{ github.sha }}\` no branch \`${{ github.ref_name }}\` disparado por @${{ github.actor }}." >> $GITHUB_STEP_SUMMARY
