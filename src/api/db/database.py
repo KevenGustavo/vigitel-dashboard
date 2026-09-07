@@ -8,8 +8,14 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=config.DB_POOL_SIZE,
     max_overflow=config.DB_MAX_OVERFLOW,
+    connect_args={
+        "server_settings": {
+            "work_mem": "64MB",
+            "hash_mem_multiplier": "2.0",
+            "jit": "off",
+        }
+    },
     pool_recycle=config.DB_POOL_RECYCLE,
-    connect_args={"server_settings": {"work_mem": "64MB"}},
 )
 
 # Session factory configurado para requisições assíncronas (compatível com SQLAlchemy 2.0)

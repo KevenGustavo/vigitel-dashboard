@@ -100,12 +100,19 @@ def run() -> int:
         conn.execute(text("ALTER TABLE gold.dim_perfil ADD PRIMARY KEY (sk_perfil);"))
         conn.execute(
             text("""
-            CREATE UNIQUE INDEX idx_dim_perfil_lookup
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_dim_perfil_lookup
             ON gold.dim_perfil (faixa_etaria, sexo, raca_cor, faixa_escolaridade)
             NULLS NOT DISTINCT;
         """)
         )
-        logger.info("dim_perfil criada com PK e índice único composto.")
+        conn.execute(
+            text("""
+            CREATE STATISTICS IF NOT EXISTS stat_dim_perfil_correlacao
+            ON faixa_etaria, sexo, faixa_escolaridade
+            FROM gold.dim_perfil;
+        """)
+        )
+        logger.info("dim_perfil criada com PK, índice único composto e estatísticas estendidas.")
 
         # ── 4. Tabela Fato ────────────────────────────────────
         # Tipagem otimizada: BOOLEAN (1 byte), SMALLINT (2 bytes), NUMERIC para métricas
@@ -255,24 +262,73 @@ def run() -> int:
         logger.info("Chave Primária e Chaves Estrangeiras adicionadas à Fato.")
 
         # ── 6. Índices para performance analítica do Dashboard ──
-        conn.execute(text("CREATE INDEX idx_fato_tempo ON gold.fato_atividade_fisica (sk_tempo);"))
         conn.execute(
-            text("CREATE INDEX idx_fato_cidade ON gold.fato_atividade_fisica (sk_cidade);")
+            text("CREATE INDEX IF NOT EXISTS idx_fato_tempo ON gold.fato_atividade_fisica (sk_tempo);")
         )
         conn.execute(
-            text("CREATE INDEX idx_fato_perfil ON gold.fato_atividade_fisica (sk_perfil);")
+            text("CREATE INDEX IF NOT EXISTS idx_fato_cidade ON gold.fato_atividade_fisica (sk_cidade);")
+        )
+        conn.execute(
+            text("CREATE INDEX IF NOT EXISTS idx_fato_perfil ON gold.fato_atividade_fisica (sk_perfil);")
         )
         conn.execute(
             text(
-                "CREATE INDEX idx_fato_cidade_perfil ON gold.fato_atividade_fisica (sk_cidade, sk_perfil);"
+                "CREATE INDEX IF NOT EXISTS idx_fato_cidade_perfil ON gold.fato_atividade_fisica (sk_cidade, sk_perfil);"
             )
         )
         conn.execute(
             text(
-                "CREATE INDEX idx_fato_tempo_cidade_perfil ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil);"
+                "CREATE INDEX IF NOT EXISTS idx_fato_tempo_cidade_perfil ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil);"
             )
         )
-        logger.info("Índices B-Tree simples e compostos criados nas FKs da Fato.")
+
+        # ── 6.1 Covering Indexes (Index-Only Scan otimizados para PostgreSQL 18) ──
+        conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS idx_fato_tempo_covering
+            ON gold.fato_atividade_fisica (sk_tempo)
+            INCLUDE (
+                peso_amostral,
+                ind_ativo_lazer, ind_ativo_lazer_150min, ind_ativo_transporte,
+                ind_ativo_ocupacional, ind_ativo_domestico, ind_inativo_total, ind_inativo_lazer,
+                ind_af_3dominios_150min, ind_af_4dominios_150min,
+                ind_tela_total_maior_3h, ind_tv_maior_3h, ind_tela_s_tv_maior_3h,
+                ind_hipertensao, ind_diabetes, ind_depressao, ind_excesso_peso, ind_obesidade
+            );
+        """)
+        )
+        conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS idx_fato_cidade_covering
+            ON gold.fato_atividade_fisica (sk_cidade)
+            INCLUDE (
+                peso_amostral,
+                ind_hipertensao, ind_diabetes, ind_depressao, ind_excesso_peso, ind_obesidade,
+                ind_ativo_lazer, ind_tela_total_maior_3h
+            );
+        """)
+        )
+        conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS idx_fato_perfil_covering
+            ON gold.fato_atividade_fisica (sk_perfil)
+            INCLUDE (
+                peso_amostral,
+                ind_ativo_lazer, ind_ativo_transporte, ind_ativo_ocupacional, ind_ativo_domestico,
+                ind_inativo_total, ind_af_4dominios_150min,
+                ind_tela_total_maior_3h, ind_tv_maior_3h, ind_tela_s_tv_maior_3h,
+                ind_hipertensao, ind_diabetes, ind_depressao, ind_excesso_peso, ind_obesidade
+            );
+        """)
+        )
+        conn.execute(
+            text("""
+            CREATE INDEX IF NOT EXISTS idx_fato_tempo_cidade_perfil_covering
+            ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil)
+            INCLUDE (peso_amostral, ind_ativo_lazer, ind_tela_total_maior_3h, ind_obesidade);
+        """)
+        )
+        logger.info("Índices B-Tree e Covering Indexes (INCLUDE) criados com sucesso na Fato.")
 
         # ── 7. Otimização física (CLUSTER) e estatísticas (ANALYZE) ──
         conn.execute(text("CLUSTER gold.fato_atividade_fisica USING idx_fato_tempo;"))

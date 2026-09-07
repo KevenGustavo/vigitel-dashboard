@@ -100,6 +100,10 @@ INSERT INTO gold.dim_perfil (sk_perfil, sexo, faixa_etaria, faixa_escolaridade, 
 (6, 'Feminino', '65+', '12 anos ou mais', 'Branca')
 ON CONFLICT (sk_perfil) DO NOTHING;
 
+CREATE STATISTICS IF NOT EXISTS stat_dim_perfil_correlacao 
+ON faixa_etaria, sexo, faixa_escolaridade 
+FROM gold.dim_perfil;
+
 -- ── 6. Camada Gold: Tabela Fato Atividade Física & Desfechos ──────────────────
 CREATE TABLE IF NOT EXISTS gold.fato_atividade_fisica (
     sk_registro text PRIMARY KEY,
@@ -150,6 +154,40 @@ CREATE INDEX IF NOT EXISTS idx_fato_cidade ON gold.fato_atividade_fisica (sk_cid
 CREATE INDEX IF NOT EXISTS idx_fato_perfil ON gold.fato_atividade_fisica (sk_perfil);
 CREATE INDEX IF NOT EXISTS idx_fato_cidade_perfil ON gold.fato_atividade_fisica (sk_cidade, sk_perfil);
 CREATE INDEX IF NOT EXISTS idx_fato_tempo_cidade_perfil ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil);
+
+-- Covering Indexes (Index-Only Scan otimizados para PostgreSQL 18)
+CREATE INDEX IF NOT EXISTS idx_fato_tempo_covering 
+ON gold.fato_atividade_fisica (sk_tempo) 
+INCLUDE (
+    peso_amostral,
+    ind_ativo_lazer, ind_ativo_lazer_150min, ind_ativo_transporte,
+    ind_ativo_ocupacional, ind_ativo_domestico, ind_inativo_total, ind_inativo_lazer,
+    ind_af_3dominios_150min, ind_af_4dominios_150min,
+    ind_tela_total_maior_3h, ind_tv_maior_3h, ind_tela_s_tv_maior_3h,
+    ind_hipertensao, ind_diabetes, ind_depressao, ind_excesso_peso, ind_obesidade
+);
+
+CREATE INDEX IF NOT EXISTS idx_fato_cidade_covering 
+ON gold.fato_atividade_fisica (sk_cidade) 
+INCLUDE (
+    peso_amostral,
+    ind_hipertensao, ind_diabetes, ind_depressao, ind_excesso_peso, ind_obesidade,
+    ind_ativo_lazer, ind_tela_total_maior_3h
+);
+
+CREATE INDEX IF NOT EXISTS idx_fato_perfil_covering 
+ON gold.fato_atividade_fisica (sk_perfil) 
+INCLUDE (
+    peso_amostral,
+    ind_ativo_lazer, ind_ativo_transporte, ind_ativo_ocupacional, ind_ativo_domestico,
+    ind_inativo_total, ind_af_4dominios_150min,
+    ind_tela_total_maior_3h, ind_tv_maior_3h, ind_tela_s_tv_maior_3h,
+    ind_hipertensao, ind_diabetes, ind_depressao, ind_excesso_peso, ind_obesidade
+);
+
+CREATE INDEX IF NOT EXISTS idx_fato_tempo_cidade_perfil_covering 
+ON gold.fato_atividade_fisica (sk_tempo, sk_cidade, sk_perfil) 
+INCLUDE (peso_amostral, ind_ativo_lazer, ind_tela_total_maior_3h, ind_obesidade);
 
 -- Seed de registros para as 27 capitais e anos
 INSERT INTO gold.fato_atividade_fisica (

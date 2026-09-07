@@ -20,6 +20,7 @@ export default defineConfig({
     drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : []
   },
   build: {
+    target: 'es2022',
     chunkSizeWarningLimit: 750,
     rollupOptions: {
       output: {

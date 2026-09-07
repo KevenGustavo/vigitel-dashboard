@@ -192,7 +192,7 @@ graph TD
 ### Pré-requisitos
 - [Git](https://git-scm.com/)
 - [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/) **OU**
-- [Python 3.12+](https://www.python.org/) e [Node.js 22+ (LTS)](https://nodejs.org/)
+- [Python 3.12+](https://www.python.org/) e [Node.js 24+ (LTS)](https://nodejs.org/) com [PostgreSQL 18+](https://www.postgresql.org/)
 
 ---
 
@@ -264,11 +264,12 @@ pytest tests/ -v
 # 2. Verificação de Linting e Formatação (Ruff)
 ruff check src/ tests/
 
-# 3. Testes Unitários de Frontend & Analítica (Node Test Runner)
+# 3. Testes Unitários de Frontend & Cobertura Nativa Node 24 (Node Test Runner)
 cd src/web
 npm test
+npm run test:coverage
 
-# 4. Compilação de Produção do Frontend
+# 4. Compilação de Produção do Frontend (ES2022)
 npm run build
 ```
 
