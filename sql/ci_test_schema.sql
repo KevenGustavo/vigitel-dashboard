@@ -26,8 +26,10 @@ CREATE TABLE IF NOT EXISTS bronze.vigitel_raw (
     has boolean, db boolean, depressao boolean
 );
 
-INSERT INTO bronze.vigitel_raw (chave, ano, cidade, pesorake2025)
-VALUES ('MOCK_BRONZE_001', 2024, 'São Paulo', 1.0)
+INSERT INTO bronze.vigitel_raw (chave, ano, cidade, pesorake2025) VALUES
+    ('MOCK_BRONZE_001', 2022, 'São Paulo', 1.0),
+    ('MOCK_BRONZE_002', 2023, 'São Paulo', 1.0),
+    ('MOCK_BRONZE_003', 2024, 'São Paulo', 1.0)
 ON CONFLICT DO NOTHING;
 
 -- ── 2. Camada Silver (Mock de Validação) ──────────────────────────────────────
@@ -44,8 +46,10 @@ CREATE TABLE IF NOT EXISTS silver.vigitel_cleansed (
     pratica_exercicio_lazer boolean
 );
 
-INSERT INTO silver.vigitel_cleansed (sk_registro, id_registro, ano_coleta, nome_cidade, peso_amostral, idade_anos, sexo, anos_estudo, raca_cor, pratica_exercicio_lazer)
-VALUES ('MOCK_SILVER_001', 'MOCK_001', 2024, 'São Paulo', 1.0, 30, 'Masculino', '12+ anos', 'Branca', true)
+INSERT INTO silver.vigitel_cleansed (sk_registro, id_registro, ano_coleta, nome_cidade, peso_amostral, idade_anos, sexo, anos_estudo, raca_cor, pratica_exercicio_lazer) VALUES
+    ('MOCK_SILVER_001', 'MOCK_001', 2022, 'São Paulo', 1.0, 25, 'Masculino', '12+ anos', 'Branca', true),
+    ('MOCK_SILVER_002', 'MOCK_002', 2023, 'São Paulo', 1.0, 28, 'Feminino', '9 a 11 anos', 'Parda', true),
+    ('MOCK_SILVER_003', 'MOCK_003', 2024, 'São Paulo', 1.0, 30, 'Masculino', '12+ anos', 'Branca', true)
 ON CONFLICT DO NOTHING;
 
 -- ── 3. Camada Gold: Dimensão Tempo ────────────────────────────────────────────
