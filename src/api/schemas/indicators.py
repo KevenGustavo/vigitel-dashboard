@@ -59,3 +59,19 @@ class RankingCidadeItem(BaseModel):
     """Prevalência de agravo de saúde para uma capital."""
     nome_cidade: str = Field(..., description="Nome da capital (ex: 'São Paulo')")
     valor: Optional[float] = Field(None, description="Prevalência percentual calculada (%)")
+
+
+# ─── Envelope Consolidado de Dashboard (BFF) ──────────────────────────────────
+
+class DashboardConsolidadoResponse(BaseModel):
+    """Envelope consolidado com todos os blocos de dados para inicialização atômica do dashboard."""
+    atividade_fisica: AtividadeFisicaResponse = Field(..., description="KPIs consolidados de atividade física")
+    sedentarismo: SedentarismoResponse = Field(..., description="KPIs consolidados de sedentarismo")
+    desfechos: DesfechosSaudeResponse = Field(..., description="KPIs consolidados de desfechos de saúde")
+    evolucao_atividade_fisica: List[EvolucaoAtividadeFisica] = Field(default_factory=list, description="Série temporal de atividade física")
+    evolucao_sedentarismo: List[EvolucaoSedentarismo] = Field(default_factory=list, description="Série temporal de sedentarismo")
+    evolucao_desfechos: List[EvolucaoDesfechosSaude] = Field(default_factory=list, description="Série temporal de desfechos de saúde")
+    comparativo_sexo: ComparativoSexoResponse = Field(..., description="Distribuição comparativa por sexo")
+    sedentarismo_faixa_etaria: List[SedentarismoFaixaEtariaItem] = Field(default_factory=list, description="Distribuição de sedentarismo por faixa etária")
+    ranking_cidades: List[RankingCidadeItem] = Field(default_factory=list, description="Ranking ordenado de capitais")
+

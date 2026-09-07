@@ -7,7 +7,8 @@ from src.api.schemas.filters import QueryFilters
 from src.api.schemas.indicators import (
     AtividadeFisicaResponse, SedentarismoResponse, DesfechosSaudeResponse,
     EvolucaoAtividadeFisica, EvolucaoSedentarismo, EvolucaoDesfechosSaude,
-    ComparativoSexoResponse, SedentarismoFaixaEtariaItem, RankingCidadeItem
+    ComparativoSexoResponse, SedentarismoFaixaEtariaItem, RankingCidadeItem,
+    DashboardConsolidadoResponse
 )
 from src.api.services.indicadores import (
     get_kpi_atividade_fisica,
@@ -18,7 +19,8 @@ from src.api.services.indicadores import (
     get_evolucao_desfechos,
     get_comparativo_sexo,
     get_sedentarismo_faixa_etaria,
-    get_desfechos_cidades
+    get_desfechos_cidades,
+    get_dashboard_consolidado
 )
 
 router = APIRouter()
@@ -147,3 +149,20 @@ async def desfechos_cidades(
     db: AsyncSession = Depends(get_db)
 ):
     return await get_desfechos_cidades(db, filters, indicador=indicador)
+
+@router.get(
+    "/dashboard",
+    response_model=DashboardConsolidadoResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Dashboard Consolidado (BFF)",
+    description="Retorna em um único payload estruturado todos os blocos de dados necessários para alimentar o dashboard, reduzindo a sobrecarga de rede e o consumo de conexões."
+)
+async def dashboard_consolidado(
+    filters: QueryFilters = Depends(),
+    indicador_ranking: Literal["obesidade", "excesso_peso", "hipertensao", "diabetes", "depressao"] = Query(
+        "obesidade",
+        description="Indicador a rankear na distribuição de capitais (obesidade, excesso_peso, hipertensao, diabetes, depressao)"
+    ),
+    db: AsyncSession = Depends(get_db)
+):
+    return await get_dashboard_consolidado(db, filters, indicador_ranking=indicador_ranking)

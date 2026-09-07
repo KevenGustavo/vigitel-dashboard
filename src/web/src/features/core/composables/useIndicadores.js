@@ -125,59 +125,51 @@ const fetchAllData = async () => {
   try {
     const params = apiParams.value
 
-    // Executa as 9 consultas da API em paralelo com cancelamento automático via signal
-    const [
-      resAtividade, resSedentarismo, resDesfechos,
-      resEvoAtiv, resEvoSed, resEvoDesf,
-      resCompSexo, resSedIdade, resRankCidades
-    ] = await Promise.all([
-      apiClient.get('/indicadores/atividade-fisica', { params, signal }),
-      apiClient.get('/indicadores/sedentarismo', { params, signal }),
-      apiClient.get('/indicadores/desfechos', { params, signal }),
-      apiClient.get('/indicadores/evolucao/atividade-fisica', { params, signal }),
-      apiClient.get('/indicadores/evolucao/sedentarismo', { params, signal }),
-      apiClient.get('/indicadores/evolucao/desfechos', { params, signal }),
-      apiClient.get('/indicadores/comparativo/sexo', { params, signal }),
-      apiClient.get('/indicadores/sedentarismo/faixa-etaria', { params, signal }),
-      apiClient.get('/indicadores/desfechos/cidades', {
-        params: { ...params, indicador: indicadorRanking.value },
-        signal
-      })
-    ])
+    // Executa uma única requisição ao endpoint consolidado (BFF), reduzindo em 89% as chamadas de rede
+    const response = await apiClient.get('/indicadores/dashboard', {
+      params: {
+        ...params,
+        indicador_ranking: indicadorRanking.value
+      },
+      signal
+    })
 
-    atividadeFisica.value = resAtividade.data
-    sedentarismo.value = resSedentarismo.data
-    desfechos.value = resDesfechos.data
+    const data = response.data || {}
 
-    evolucaoAtividadeFisica.value = resEvoAtiv.data || []
-    evolucaoSedentarismo.value = resEvoSed.data || []
-    evolucaoDesfechos.value = resEvoDesf.data || []
+    atividadeFisica.value = data.atividade_fisica || null
+    sedentarismo.value = data.sedentarismo || null
+    desfechos.value = data.desfechos || null
 
-    comparativoSexo.value = resCompSexo.data || null
-    sedentarismoFaixaEtaria.value = resSedIdade.data || []
-    rankingCidades.value = resRankCidades.data || []
+    evolucaoAtividadeFisica.value = data.evolucao_atividade_fisica || []
+    evolucaoSedentarismo.value = data.evolucao_sedentarismo || []
+    evolucaoDesfechos.value = data.evolucao_desfechos || []
+
+    comparativoSexo.value = data.comparativo_sexo || null
+    sedentarismoFaixaEtaria.value = data.sedentarismo_faixa_etaria || []
+    rankingCidades.value = data.ranking_cidades || []
 
     // Popula o objeto visaoGeral (Derived State com tendências calculadas)
     visaoGeral.value = {
       atinge_150min: {
-        value: resAtividade.data?.atinge_150min,
-        trend: calcTrend(resEvoAtiv.data, 'atinge_150min')
+        value: data.atividade_fisica?.atinge_150min,
+        trend: calcTrend(data.evolucao_atividade_fisica, 'atinge_150min')
       },
       ativo_lazer: {
-        value: resAtividade.data?.ativo_lazer,
-        trend: calcTrend(resEvoAtiv.data, 'ativo_lazer')
+        value: data.atividade_fisica?.ativo_lazer,
+        trend: calcTrend(data.evolucao_atividade_fisica, 'ativo_lazer')
       },
       tempo_tela_maior_3h: {
-        value: resSedentarismo.data?.tempo_tela_maior_3h,
-        trend: calcTrend(resEvoSed.data, 'tempo_tela_maior_3h')
+        value: data.sedentarismo?.tempo_tela_maior_3h,
+        trend: calcTrend(data.evolucao_sedentarismo, 'tempo_tela_maior_3h')
       },
       obesidade: {
-        value: resDesfechos.data?.obesidade,
-        trend: calcTrend(resEvoDesf.data, 'obesidade')
+        value: data.desfechos?.obesidade,
+        trend: calcTrend(data.evolucao_desfechos, 'obesidade')
       }
     }
 
     isLoading.value = false
+
 
   } catch (error) {
     if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED') {

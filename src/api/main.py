@@ -71,6 +71,22 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = f"{process_time:.2f}ms"
     return response
 
+# 4. Cache HTTP para Edge / CDN: orienta navegadores e CDNs (Cloudflare/CloudFront/Vercel)
+# a reaproveitarem respostas analíticas bem-sucedidas (GET 200) de inquéritos históricos estáticos.
+@app.middleware("http")
+async def add_cache_control_header(request: Request, call_next):
+    response = await call_next(request)
+    if request.method in ("GET", "HEAD") and response.status_code == 200:
+        path = request.url.path
+        if path.startswith("/api/v1/indicadores") or path.startswith("/api/v1/filtros"):
+            response.headers["Cache-Control"] = (
+                "public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400"
+            )
+        elif path == "/health":
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
+
+
 # ─── Tratamento Global de Exceções Não Tratadas (Segurança OWASP) ─────────────
 
 @app.exception_handler(Exception)

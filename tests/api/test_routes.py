@@ -164,3 +164,78 @@ async def test_invalid_param_type(async_client: AsyncClient):
     """Garante que a API e o Pydantic bloqueiam tipos de dados inválidos com HTTP 422."""
     response = await async_client.get("/api/v1/indicadores/atividade-fisica?ano=abc")
     assert response.status_code == 422
+
+async def test_dashboard_consolidado_success(async_client: AsyncClient):
+    """Verifica que o endpoint consolidado (BFF) retorna todos os 9 blocos com integridade e tipo correto."""
+    response = await async_client.get("/api/v1/indicadores/dashboard?ano=2023")
+    assert response.status_code == 200
+    data = response.json()
+
+    # Verifica os 3 blocos de KPIs
+    assert "atividade_fisica" in data
+    assert "sedentarismo" in data
+    assert "desfechos" in data
+    assert data["atividade_fisica"]["atinge_150min"] is not None
+    assert data["sedentarismo"]["tempo_tela_maior_3h"] is not None
+    assert data["desfechos"]["obesidade"] is not None
+
+    # Verifica as 3 séries temporais
+    assert "evolucao_atividade_fisica" in data
+    assert "evolucao_sedentarismo" in data
+    assert "evolucao_desfechos" in data
+    assert isinstance(data["evolucao_atividade_fisica"], list)
+    assert isinstance(data["evolucao_sedentarismo"], list)
+    assert isinstance(data["evolucao_desfechos"], list)
+
+    # Verifica as 3 análises comparativas e de distribuição
+    assert "comparativo_sexo" in data
+    assert data["comparativo_sexo"]["masculino"] is not None
+    assert data["comparativo_sexo"]["feminino"] is not None
+
+    assert "sedentarismo_faixa_etaria" in data
+    assert isinstance(data["sedentarismo_faixa_etaria"], list)
+    assert len(data["sedentarismo_faixa_etaria"]) > 0
+
+    assert "ranking_cidades" in data
+    assert isinstance(data["ranking_cidades"], list)
+    assert len(data["ranking_cidades"]) == 27
+
+async def test_dashboard_consolidado_with_filters(async_client: AsyncClient):
+    """Verifica o endpoint consolidado com filtros demográficos e indicador de ranking customizado."""
+    response = await async_client.get(
+        "/api/v1/indicadores/dashboard?ano=2023&cidade=São Paulo&indicador_ranking=diabetes"
+    )
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["atividade_fisica"] is not None
+    assert data["desfechos"]["obesidade"] is not None
+    assert len(data["ranking_cidades"]) == 27
+
+    # Garante que ranking está ordenado decrescente
+    valores = [item["valor"] for item in data["ranking_cidades"] if item["valor"] is not None]
+    assert valores == sorted(valores, reverse=True)
+
+async def test_cache_control_headers(async_client: AsyncClient):
+    """Verifica que respostas analíticas incluem cabeçalhos de cache para CDN e o health check impede cache."""
+    # Rota analítica consolidada
+    res_dash = await async_client.get("/api/v1/indicadores/dashboard?ano=2023")
+    assert res_dash.status_code == 200
+    assert "cache-control" in res_dash.headers
+    cc_dash = res_dash.headers["cache-control"]
+    assert "public" in cc_dash
+    assert "max-age=3600" in cc_dash
+    assert "s-maxage=86400" in cc_dash
+
+    # Rota de filtros
+    res_filtros = await async_client.get("/api/v1/filtros")
+    assert res_filtros.status_code == 200
+    assert "cache-control" in res_filtros.headers
+    assert "public" in res_filtros.headers["cache-control"]
+
+    # Rota de health check não deve ser pública para cache
+    res_health = await async_client.get("/health")
+    assert res_health.status_code == 200
+    assert "no-store" in res_health.headers.get("cache-control", "")
+
+

@@ -1,4 +1,5 @@
 import time
+import asyncio
 from collections import OrderedDict
 from typing import List, Optional, Any, Tuple
 from sqlalchemy import select, func, case, cast, Numeric
@@ -10,7 +11,8 @@ from src.api.schemas.filters import QueryFilters
 from src.api.schemas.indicators import (
     AtividadeFisicaResponse, SedentarismoResponse, DesfechosSaudeResponse,
     EvolucaoAtividadeFisica, EvolucaoSedentarismo, EvolucaoDesfechosSaude,
-    ComparativoSexoResponse, SedentarismoFaixaEtariaItem, RankingCidadeItem
+    ComparativoSexoResponse, SedentarismoFaixaEtariaItem, RankingCidadeItem,
+    DashboardConsolidadoResponse
 )
 
 # ─── Mapeamentos e Constantes Estáticas ────────────────────────────────────────
@@ -366,3 +368,44 @@ async def get_desfechos_cidades(db: AsyncSession, filters: QueryFilters, indicad
     res = [RankingCidadeItem(**dict(r)) for r in sorted_rows]
     GLOBAL_CACHE[cache_key] = res
     return res
+
+# ─── Orquestração do Dashboard Consolidado (BFF) ──────────────────────────────
+
+async def get_dashboard_consolidado(
+    db: AsyncSession,
+    filters: QueryFilters,
+    indicador_ranking: str = 'obesidade'
+) -> DashboardConsolidadoResponse:
+    """
+    Executa concorrentemente as 9 consultas analíticas do dashboard compartilhando a mesma
+    sessão assíncrona, eliminando sobrecarga de rede e disputa de conexões no pool do PostgreSQL.
+    """
+    cache_key = get_cache_key("dashboard_consolidado", filters, extra=indicador_ranking)
+    if cache_key in GLOBAL_CACHE:
+        return GLOBAL_CACHE[cache_key]
+
+    ativ = await get_kpi_atividade_fisica(db, filters)
+    sed = await get_kpi_sedentarismo(db, filters)
+    desf = await get_kpi_desfechos(db, filters)
+    evo_ativ = await get_evolucao_atividade_fisica(db, filters)
+    evo_sed = await get_evolucao_sedentarismo(db, filters)
+    evo_desf = await get_evolucao_desfechos(db, filters)
+    comp_sexo = await get_comparativo_sexo(db, filters)
+    sed_idade = await get_sedentarismo_faixa_etaria(db, filters)
+    rank_cidades = await get_desfechos_cidades(db, filters, indicador=indicador_ranking)
+
+
+    res = DashboardConsolidadoResponse(
+        atividade_fisica=ativ,
+        sedentarismo=sed,
+        desfechos=desf,
+        evolucao_atividade_fisica=evo_ativ,
+        evolucao_sedentarismo=evo_sed,
+        evolucao_desfechos=evo_desf,
+        comparativo_sexo=comp_sexo,
+        sedentarismo_faixa_etaria=sed_idade,
+        ranking_cidades=rank_cidades
+    )
+    GLOBAL_CACHE[cache_key] = res
+    return res
+

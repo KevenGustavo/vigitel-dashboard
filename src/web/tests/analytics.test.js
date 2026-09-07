@@ -262,5 +262,89 @@ describe('Frontend Analytics & Data Processing Tests', () => {
     })
   })
 
+  describe('Consolidated Dashboard (BFF) Payload Integration', () => {
+    test('deve desempacotar corretamente todos os 9 blocos do payload consolidado', () => {
+      const mockConsolidatedResponse = {
+        atividade_fisica: { atinge_150min: 39.2, ativo_lazer: 30.5 },
+        sedentarismo: { tempo_tela_maior_3h: 62.1 },
+        desfechos: { obesidade: 22.8 },
+        evolucao_atividade_fisica: [
+          { ano: 2022, atinge_150min: 37.0, ativo_lazer: 28.0 },
+          { ano: 2023, atinge_150min: 39.2, ativo_lazer: 30.5 }
+        ],
+        evolucao_sedentarismo: [
+          { ano: 2022, tempo_tela_maior_3h: 60.0 },
+          { ano: 2023, tempo_tela_maior_3h: 62.1 }
+        ],
+        evolucao_desfechos: [
+          { ano: 2022, obesidade: 21.5 },
+          { ano: 2023, obesidade: 22.8 }
+        ],
+        comparativo_sexo: {
+          masculino: { atinge_150min: 44.0 },
+          feminino: { atinge_150min: 35.0 }
+        },
+        sedentarismo_faixa_etaria: [
+          { faixa_etaria: '18-24', tempo_tela_maior_3h: 75.0 }
+        ],
+        ranking_cidades: [
+          { nome_cidade: 'Porto Alegre', valor: 25.0 },
+          { nome_cidade: 'São Paulo', valor: 22.8 }
+        ]
+      }
+
+      const data = mockConsolidatedResponse
+
+      // Simulação do desempacotamento realizado em useIndicadores.js
+      const visaoGeral = {
+        atinge_150min: {
+          value: data.atividade_fisica?.atinge_150min,
+          trend: calcTrend(data.evolucao_atividade_fisica, 'atinge_150min')
+        },
+        ativo_lazer: {
+          value: data.atividade_fisica?.ativo_lazer,
+          trend: calcTrend(data.evolucao_atividade_fisica, 'ativo_lazer')
+        },
+        tempo_tela_maior_3h: {
+          value: data.sedentarismo?.tempo_tela_maior_3h,
+          trend: calcTrend(data.evolucao_sedentarismo, 'tempo_tela_maior_3h')
+        },
+        obesidade: {
+          value: data.desfechos?.obesidade,
+          trend: calcTrend(data.evolucao_desfechos, 'obesidade')
+        }
+      }
+
+      assert.equal(visaoGeral.atinge_150min.value, 39.2)
+      assert.equal(visaoGeral.atinge_150min.trend, 2.2)
+      assert.equal(visaoGeral.tempo_tela_maior_3h.value, 62.1)
+      assert.equal(visaoGeral.tempo_tela_maior_3h.trend, 2.1)
+      assert.equal(visaoGeral.obesidade.value, 22.8)
+      assert.equal(visaoGeral.obesidade.trend, 1.3)
+      assert.equal(data.ranking_cidades.length, 2)
+      assert.equal(data.comparativo_sexo.masculino.atinge_150min, 44.0)
+    })
+
+    test('deve tratar com segurança payloads vazios ou com valores nulos', () => {
+      const data = {}
+      const visaoGeral = {
+        atinge_150min: {
+          value: data.atividade_fisica?.atinge_150min ?? null,
+          trend: calcTrend(data.evolucao_atividade_fisica, 'atinge_150min')
+        },
+        ativo_lazer: {
+          value: data.atividade_fisica?.ativo_lazer ?? null,
+          trend: calcTrend(data.evolucao_atividade_fisica, 'ativo_lazer')
+        }
+      }
+
+      assert.equal(visaoGeral.atinge_150min.value, null)
+      assert.equal(visaoGeral.atinge_150min.trend, null)
+      assert.equal(visaoGeral.ativo_lazer.value, null)
+      assert.equal(visaoGeral.ativo_lazer.trend, null)
+    })
+  })
+
 })
+
 
