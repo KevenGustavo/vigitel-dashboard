@@ -32,7 +32,7 @@ A arquitetura do ecossistema integra engenharia de dados, microsserviços analí
 ```mermaid
 flowchart TD
     subgraph Data_Source["1. Fonte de Microdados"]
-        CSV["Microdados VIGITEL <br/>2006 a 2024 (27 Capitais)"]
+        CSV["Microdados VIGITEL <br/>2006 a 2024 (.CSV)"]
     end
 
     subgraph Data_Warehouse["2. Pipeline ETL & Data Warehouse (PostgreSQL)"]
