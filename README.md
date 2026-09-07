@@ -191,7 +191,7 @@ graph TD
 
 ### Pré-requisitos
 - [Git](https://git-scm.com/)
-- [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/) **OU**
+- [Docker](https://www.docker.com/) e [Docker Compose](https://docs.docker.com/compose/)
 - [Python 3.12+](https://www.python.org/) e [Node.js 24+ (LTS)](https://nodejs.org/) com [PostgreSQL 18+](https://www.postgresql.org/)
 
 ---
